@@ -18,7 +18,7 @@ function App() {
   const [convos, setConvos] = useState([]);
 
   const load = async () => {
-    const res = await axios.get('http://localhost:5000/api/conversations');
+    const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/conversations`);
     setConvos(res.data);
   };
 
@@ -29,7 +29,7 @@ function App() {
       alert('Fill all fields');
       return;
     }
-    await axios.post('http://localhost:5000/api/conversations', form);
+    await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/conversations`, form);
     setForm({ siteName: '', siteUrl: '', pageTitle: '', commentId: '', yourComment: '', hint: '' });
     load();
   };
@@ -39,7 +39,7 @@ function App() {
   
     try {
       console.log(c._id)
-      await axios.delete(`http://localhost:5000/api/conversations/${c._id}`);
+      await axios.delete(`${process.env.REACT_APP_BACKEND_URL}/api/conversations/${c._id}`);
       setConvos(prev => prev.filter(item => item._id !== c._id));
     } catch (err) {
       console.error('Delete error:', err.response?.data || err.message);
