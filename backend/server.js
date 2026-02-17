@@ -12,10 +12,7 @@ app.use(bodyParser.json());
 const mongoUri = process.env.MONGO_URI;
 
 // mongoose.connect('mongodb://127.0.0.1:27017/commentTracker');
-mongoose.connect(mongoUri,{
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+mongoose.connect(mongoUri)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log("MongoDB connection error:", err));
 
