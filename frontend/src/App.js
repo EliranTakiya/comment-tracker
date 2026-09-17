@@ -264,12 +264,15 @@ function App() {
             }}
             onClick={() => {
               navigator.clipboard.writeText(c.yourComment);
-              window.open(c.siteUrl, '_blank');
+              window.location.href=c.siteUrl;
             }}
           >
             Open & Fast Find ↗
           </button>
-
+          {/* onClick={() => {
+              navigator.clipboard.writeText(c.yourComment);
+              window.open(c.siteUrl, '_blank');
+            }} */}
           <button
             style={{
               padding: '8px 16px',
