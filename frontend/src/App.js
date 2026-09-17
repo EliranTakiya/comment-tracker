@@ -110,7 +110,7 @@ function App() {
           <div className="instructions-text">
             1. Find the "comment" button on the site and click it<br></br>
             2. use page search (Ctrl+F / Cmd+F on Windows or find on page on Mobile)<br></br>
-            3. paste your comment and track it!
+            3. paste your comment and track it!<br></br>
             📱 iPhone tip: If you add Comment Tracker to your Home Screen, turn “Open as Web App” OFF when adding it. This makes Find on Page work normally.
           </div>
         )}
