@@ -250,30 +250,7 @@ function App() {
 
         {/* Actions */}
         <div className="actions" style={{ marginTop: '10px' }}>
-        <a
-  className="jump-link"
-  href={c.siteUrl}
-  target="_blank"
-  rel="noopener noreferrer"
-  onClick={() => {
-    navigator.clipboard.writeText(c.yourComment);
-  }}
-  style={{
-    display: 'inline-block',
-    padding: '8px 16px',
-    borderRadius: '6px',
-    border: 'none',
-    background: '#4c8bf5',
-    color: '#fff',
-    cursor: 'pointer',
-    fontWeight: '500',
-    textDecoration: 'none',
-    transition: 'background 0.2s',
-  }}
->
-  Open & Fast Find ↗️
-</a>
-          {/* <button
+          <button
             className="jump-link"
             style={{
               padding: '8px 16px',
@@ -291,7 +268,7 @@ function App() {
             }}
           >
             Open & Fast Find ↗
-          </button> */}
+          </button>
            <button
             style={{
               padding: '8px 16px',
