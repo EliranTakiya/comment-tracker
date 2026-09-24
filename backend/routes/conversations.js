@@ -10,6 +10,47 @@ router.get('/', async (req, res) => {
     res.json(convos);
 });
 
+router.put('/:id/replies', async (req, res) => {
+    try {
+      const repliesCount = Number(req.body.repliesCount);
+      if (!Number.isInteger(repliesCount) || repliesCount < 0) {
+        return res.status(400).json({ message: 'Replies count must be a non-negative integer' });
+      }
+      const updated = await Conversation.findByIdAndUpdate(
+        req.params.id,
+        { repliesCount },
+        { new: true, runValidators: true }
+      );
+      if (!updated) return res.status(404).json({ message: 'Conversation not found' });
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
+  router.put('/:id', async (req, res) => {
+      try {
+        const updated = await Conversation.findByIdAndUpdate(
+          req.params.id,
+          {
+            siteName: req.body.siteName,
+            siteUrl: req.body.siteUrl,
+            pageTitle: req.body.pageTitle,
+            commentId: req.body.commentId,
+            yourComment: req.body.yourComment,
+            hint: req.body.hint,
+          },
+          { new: true, runValidators: true }
+        );
+        if (!updated) return res.status(404).json({ message: 'Conversation not found' });
+        res.json(updated);
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+      }
+    });
+
 // DELETE by ID
 router.delete('/:id', async (req, res) => {
     console.log('DELETE request received for ID:', req.params.id);
