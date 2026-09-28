@@ -19,16 +19,21 @@ const themes = [
 ];
 const BADGES = [
   { name: 'מתחיל', min: 0, icon: '○', className: 'beginner' },
-  { name: 'מגיב פעיל', min: 1, icon: '✦', className: 'active' },
-  { name: 'טוקבקיסט', min: 5, icon: '◆', className: 'commenter' },
-  { name: 'טוקבקיסט ותיק', min: 15, icon: '★', className: 'veteran' },
-  { name: 'טוקבקיסט על', min: 30, icon: '✹', className: 'super' },
+  { name: 'מגיב פעיל', min: 20, icon: '✦', className: 'active' },
+  { name: 'טוקבקיסט', min: 60, icon: '◆', className: 'commenter' },
+  { name: 'טוקבקיסט ותיק', min: 150, icon: '★', className: 'veteran' },
+  { name: 'טוקבקיסט על', min: 300, icon: '✹', className: 'super' },
 ];
 
 function App() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [convos, setConvos] = useState([]);
+  const [blogPosts, setBlogPosts] = useState([]);
+  const [blogDraft, setBlogDraft] = useState({ title: '', content: '' });
+  const [blogCommentDrafts, setBlogCommentDrafts] = useState({});
+  const [blogActivity, setBlogActivity] = useState({ blogPostsCount: 0, blogCommentsReceived: 0, blogLikesCount: 0, blogDislikesCount: 0 });
+  const [blogActivityDraft, setBlogActivityDraft] = useState({ blogPostsCount: '0', blogCommentsReceived: '0', blogLikesCount: '0', blogDislikesCount: '0' });
   const [topicFilter, setTopicFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [customDate, setCustomDate] = useState('');
@@ -38,6 +43,9 @@ function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRepliesId, setEditingRepliesId] = useState(null);
   const [repliesDraft, setRepliesDraft] = useState('');
+  const [editingReactionsId, setEditingReactionsId] = useState(null);
+  const [reactionsDraft, setReactionsDraft] = useState({ likesCount: '0', dislikesCount: '0' });
+  const [statisticsTopicFilter, setStatisticsTopicFilter] = useState('all');
   const [editingConversationId, setEditingConversationId] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('comment-tracker-theme') || 'day');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -70,7 +78,89 @@ function App() {
     setConvos(res.data);
   };
 
-  useEffect(() => { load(); }, []);
+  const loadBlogPosts = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`);
+      setBlogPosts(response.data);
+    } catch (err) {
+      console.error('Load blog posts error:', err.response?.data || err.message);
+    }
+  };
+
+  const loadBlogActivity = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/profile-stats`);
+      const activity = { blogPostsCount: 0, blogCommentsReceived: 0, blogLikesCount: 0, blogDislikesCount: 0, ...response.data };
+      setBlogActivity(activity);
+      setBlogActivityDraft(Object.fromEntries(Object.entries(activity).filter(([key]) => key !== '_id' && key !== 'key' && key !== '__v').map(([key, value]) => [key, String(value)])));
+    } catch (err) {
+      console.error('Load blog activity error:', err.response?.data || err.message);
+    }
+  };
+
+  useEffect(() => { load(); loadBlogActivity(); loadBlogPosts(); }, []);
+
+  const createBlogPost = async (event) => {
+    event.preventDefault();
+    const title = blogDraft.title.trim();
+    const content = blogDraft.content.trim();
+    if (!title || !content) return;
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, { title, content });
+      setBlogPosts(previous => [response.data, ...previous]);
+      setBlogDraft({ title: '', content: '' });
+    } catch (err) {
+      console.error('Create blog post error:', err.response?.data || err.message);
+      alert('שמירת הפוסט נכשלה.');
+    }
+  };
+
+  const deleteBlogPost = async (post) => {
+    if (!window.confirm('למחוק את הפוסט ואת התגובות שלו?')) return;
+    try {
+      await axios.delete(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}`);
+      setBlogPosts(previous => previous.filter(item => item._id !== post._id));
+    } catch (err) {
+      console.error('Delete blog post error:', err.response?.data || err.message);
+      alert('מחיקת הפוסט נכשלה.');
+    }
+  };
+
+  const addBlogComment = async (post) => {
+    const draft = blogCommentDrafts[post._id] || { author: '', content: '' };
+    const author = draft.author.trim();
+    const content = draft.content.trim();
+    if (!author || !content) return;
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/comments`, { author, content });
+      setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
+      setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { author: '', content: '' } }));
+    } catch (err) {
+      console.error('Add blog comment error:', err.response?.data || err.message);
+      alert('שמירת התגובה נכשלה.');
+    }
+  };
+
+  const saveBlogActivity = async () => {
+    const values = {
+      ...Object.fromEntries(Object.entries(blogActivityDraft).map(([key, value]) => [key, Number(value)])),
+      blogPostsCount: blogPosts.length,
+      blogCommentsReceived: blogCommentsCount,
+    };
+    if (Object.values(values).some(value => !Number.isInteger(value) || value < 0)) {
+      alert('יש להזין מספרים שלמים, 0 או יותר.');
+      return;
+    }
+    try {
+      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/profile-stats`, values);
+      const saved = { ...values, ...response.data };
+      setBlogActivity(saved);
+      setBlogActivityDraft(Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])));
+    } catch (err) {
+      console.error('Save blog activity error:', err.response?.data || err.message);
+      alert('שמירת פעילות הבלוג נכשלה.');
+    }
+  };
 
   const submit = async () => {
     if (!form.siteName || !form.siteUrl || !form.pageTitle || !form.yourComment || !form.hint) {
@@ -142,6 +232,28 @@ function App() {
     }
   };
 
+  const startReactionsEdit = (conversation) => {
+    setEditingReactionsId(conversation._id);
+    setReactionsDraft({ likesCount: String(conversation.likesCount || 0), dislikesCount: String(conversation.dislikesCount || 0) });
+  };
+
+  const updateReactions = async (conversation) => {
+    const likesCount = Number(reactionsDraft.likesCount);
+    const dislikesCount = Number(reactionsDraft.dislikesCount);
+    if (![likesCount, dislikesCount].every(count => Number.isInteger(count) && count >= 0)) {
+      alert('יש להזין מספרים שלמים, 0 או יותר.');
+      return;
+    }
+    try {
+      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/conversations/${conversation._id}/reactions`, { likesCount, dislikesCount });
+      setConvos(previous => previous.map(item => item._id === conversation._id ? response.data : item));
+      setEditingReactionsId(null);
+    } catch (err) {
+      console.error('Update reactions error:', err.response?.data || err.message);
+      alert('עדכון הלייקים והדיסלייקים נכשל.');
+    }
+  };
+
   const filteredConvos = useMemo(() => {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -175,12 +287,45 @@ function App() {
   }, [convos, siteFilter, searchText, topicFilter, dateFilter, customDate, repliesFilter]);
 
   const savedSites = [...new Set(convos.map(conversation => conversation.siteName).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'he'));
-  const totalReplies = convos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
-  const currentBadge = [...BADGES].reverse().find(badge => totalReplies >= badge.min) || BADGES[0];
+  const totalCommentLikes = convos.reduce((total, conversation) => total + (conversation.likesCount || 0), 0);
+  const totalCommentDislikes = convos.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
+  const pointsFromSavedComments = convos.length;
+  const pointsFromCommentLikes = totalCommentLikes * 2;
+  const pointsFromCommentDislikes = totalCommentDislikes * -2;
+  const blogCommentsCount = blogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
+  const pointsFromBlogPosts = blogPosts.length * 5;
+  const pointsFromBlogComments = blogCommentsCount * 2;
+  const pointsFromBlogLikes = blogActivity.blogLikesCount * 2;
+  const pointsFromBlogDislikes = blogActivity.blogDislikesCount * -2;
+  const rawPoints = pointsFromSavedComments + pointsFromCommentLikes + pointsFromCommentDislikes
+    + pointsFromBlogPosts + pointsFromBlogComments + pointsFromBlogLikes + pointsFromBlogDislikes;
+  const totalPoints = Math.max(0, rawPoints);
+  const badgeThresholds = [0, 20, 60, 150, 300];
+  const currentBadgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
+  const currentBadge = BADGES[currentBadgeIndex];
+  const nextBadge = BADGES[currentBadgeIndex + 1] ? { ...BADGES[currentBadgeIndex + 1], min: badgeThresholds[currentBadgeIndex + 1] } : null;
+  const currentBadgeMin = badgeThresholds[currentBadgeIndex];
+  const badgeProgress = nextBadge
+    ? Math.round(((totalPoints - currentBadgeMin) / (nextBadge.min - currentBadgeMin)) * 100)
+    : 100;
+  const statisticsConvos = statisticsTopicFilter === 'all'
+    ? convos
+    : convos.filter(conversation => (conversation.hint || TOPICS[0]) === statisticsTopicFilter);
+  const statisticsSites = [...new Set(statisticsConvos.map(conversation => conversation.siteName).filter(Boolean))];
+  const repliedConversations = statisticsConvos.filter(conversation => (conversation.repliesCount || 0) > 0).length;
+  const siteStats = Object.entries(statisticsConvos.reduce((stats, conversation) => {
+    const site = conversation.siteName || 'ללא שם';
+    stats[site] = (stats[site] || 0) + 1;
+    return stats;
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topSiteCount = siteStats[0]?.[1] || 1;
+  const totalLikes = statisticsConvos.reduce((total, conversation) => total + (conversation.likesCount || 0), 0);
+  const totalDislikes = statisticsConvos.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
+  const statisticsReplies = statisticsConvos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
 
   return (
     <div className={`app theme-${theme}`} dir="rtl">
-      <header className="hero">
+      <header className="hero" id="home">
         <div className="theme-picker">
           <button className="brand-mark" onClick={() => setShowThemeMenu(!showThemeMenu)} aria-label="בחירת רקע" aria-expanded={showThemeMenu}>CT</button>
           {showThemeMenu && <div className="theme-menu">
@@ -206,15 +351,85 @@ function App() {
               {nickname || 'צור כינוי'}
             </button>
           )}
-          <div className={`user-badge ${currentBadge.className}`} title={`סה״כ הגיבו לי: ${totalReplies}`}>
+          <div className={`user-badge ${currentBadge.className}`} title={`ניקוד ההתקדמות שלי: ${totalPoints}`}>
             <span className="badge-art" aria-hidden="true">{currentBadge.icon}</span>
-            <span className="badge-copy"><strong>{currentBadge.name}</strong><small>{totalReplies} תגובות</small></span>
+            <span className="badge-copy"><strong>{currentBadge.name}</strong><small>{totalPoints} נקודות</small></span>
           </div>
         </div>
         <div className="hero-count"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
       </header>
 
-      <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`}>
+      <nav className="main-nav" aria-label="ניווט ראשי">
+        <a href="#home">ראשי</a><a href="#comments">התגובות שלי</a><a href="#statistics">הסטטיסטיקות שלי</a><a href="#progress">ההתקדמות שלי</a><a href="#blog">הבלוג שלי</a>
+      </nav>
+
+      <section className="statistics-section" id="statistics" aria-labelledby="statistics-title">
+        <div className="statistics-heading"><div><span className="section-kicker">המספרים שלך</span><h2 id="statistics-title">הסטטיסטיקות שלי</h2></div><span className="statistics-period">כל התקופה</span></div>
+        <label className="statistics-filter">סוג אתר<select value={statisticsTopicFilter} onChange={event => setStatisticsTopicFilter(event.target.value)} aria-label="סינון סטטיסטיקות לפי סוג אתר"><option value="all">כל סוגי האתרים</option>{TOPICS.map(topic => <option key={topic} value={topic}>{topic}</option>)}</select></label>
+        <div className="statistics-cards">
+          <article className="stat-card"><span>תגובות ששמרתי</span><strong>{statisticsConvos.length}</strong><small>{statisticsTopicFilter === 'all' ? 'בכל סוגי האתרים' : statisticsTopicFilter}</small></article>
+          <article className="stat-card"><span>תגובות שקיבלו מענה</span><strong>{repliedConversations}</strong><small>מתוך {statisticsConvos.length} תגובות</small></article>
+          <article className="stat-card"><span>תגובות שקיבלתי</span><strong>{statisticsReplies}</strong><small>סך כל המגיבים</small></article>
+          <article className="stat-card"><span>לייקים שקיבלתי</span><strong>{totalLikes}</strong><small>בכל התגובות השמורות</small></article>
+          <article className="stat-card"><span>דיסלייקים שקיבלתי</span><strong>{totalDislikes}</strong><small>בכל התגובות השמורות</small></article>
+          <article className="stat-card"><span>אתרים שהגבתי בהם</span><strong>{statisticsSites.length}</strong><small>אתרים שונים</small></article>
+        </div>
+        <div className="statistics-sites"><h3>איפה הגבתי הכי הרבה?</h3>{siteStats.length ? siteStats.map(([site, count]) => <div className="site-stat" key={site}><span>{site}</span><div className="site-stat-track"><i style={{ width: `${Math.max(8, count / topSiteCount * 100)}%` }} /></div><strong>{count}</strong></div>) : <p>שמרו תגובה ראשונה כדי להתחיל לצבור נתונים.</p>}</div>
+      </section>
+
+      <section className="progress-section" id="progress" aria-labelledby="progress-title">
+        <div className="statistics-heading"><div><span className="section-kicker">הדרך שלך</span><h2 id="progress-title">ההתקדמות שלי</h2></div><span className={`user-badge ${currentBadge.className}`}><span className="badge-art" aria-hidden="true">{currentBadge.icon}</span><span className="badge-copy"><strong>{currentBadge.name}</strong><small>הדרגה הנוכחית</small></span></span></div>
+        <div className="progress-summary"><strong>{totalPoints}</strong><span>נקודות זכות</span></div>
+        {nextBadge ? <><p className="next-badge-copy">עוד {nextBadge.min - totalPoints} נקודות לדרגת {nextBadge.name}</p><div className="progress-track" role="progressbar" aria-label="התקדמות לדרגה הבאה" aria-valuenow={badgeProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${badgeProgress}%` }} /></div></> : <p className="next-badge-copy">הגעת לדרגה הגבוהה ביותר — כל הכבוד!</p>}
+        <div className="badge-milestones">{BADGES.map((badge, index) => <div key={badge.className} className={`badge-milestone ${totalPoints >= badgeThresholds[index] ? 'earned' : ''}`}><span className="badge-milestone-icon">{badge.icon}</span><strong>{badge.name}</strong><small>{badgeThresholds[index]} נקודות</small></div>)}</div>
+      </section>
+
+      <section className="progress-details" aria-label="פירוט נקודות ופעילות הבלוג">
+        <div className="points-breakdown">
+          <h3>איך צוברים נקודות?</h3>
+          <div><span>תגובות ששמרתי · נקודה לכל תגובה</span><strong>+{pointsFromSavedComments}</strong></div>
+          <div><span>לייקים לתגובות שלי · 2 נקודות לכל לייק</span><strong>+{pointsFromCommentLikes}</strong></div>
+          <div><span>דיסלייקים לתגובות שלי · מינוס 2 לכל דיסלייק</span><strong>{pointsFromCommentDislikes}</strong></div>
+          <div><span>פוסטים ששיתפתי בבלוג · 5 נקודות לפוסט</span><strong>+{pointsFromBlogPosts}</strong></div>
+          <div><span>תגובות שקיבלתי בבלוג · 2 נקודות לכל תגובה</span><strong>+{pointsFromBlogComments}</strong></div>
+          <div><span>לייקים חיוביים בבלוג · 2 נקודות לכל לייק</span><strong>+{pointsFromBlogLikes}</strong></div>
+          <div><span>דיסלייקים בבלוג · מינוס 2 לכל דיסלייק</span><strong>{pointsFromBlogDislikes}</strong></div>
+          {rawPoints < 0 && <small>הניקוד לא יורד מתחת לאפס.</small>}
+        </div>
+        <div className="blog-activity-panel">
+          <h3>פעילות הבלוג</h3>
+          <p>מספר הפוסטים והתגובות מתעדכן אוטומטית. אפשר להזין ידנית לייקים ודיסלייקים שהתקבלו בבלוג.</p>
+          <div className="blog-activity-grid">
+            <div className="blog-count"><span>פוסטים שפורסמו</span><strong>{blogPosts.length}</strong></div>
+            <div className="blog-count"><span>תגובות שהתקבלו</span><strong>{blogCommentsCount}</strong></div>
+            <label>לייקים חיוביים בבלוג<input type="number" min="0" value={blogActivityDraft.blogLikesCount} onChange={event => setBlogActivityDraft(previous => ({ ...previous, blogLikesCount: event.target.value }))} /></label>
+            <label>דיסלייקים בבלוג<input type="number" min="0" value={blogActivityDraft.blogDislikesCount} onChange={event => setBlogActivityDraft(previous => ({ ...previous, blogDislikesCount: event.target.value }))} /></label>
+          </div>
+          <button className="primary-button" onClick={saveBlogActivity}>שמירת נתוני הבלוג</button>
+        </div>
+      </section>
+
+      <section className="blog-section" id="blog" aria-labelledby="blog-title">
+        <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{blogPosts.length} פוסטים</span></div>
+        <form className="blog-compose" onSubmit={createBlogPost}>
+          <label>כותרת הפוסט<input maxLength="160" required value={blogDraft.title} onChange={event => setBlogDraft(previous => ({ ...previous, title: event.target.value }))} placeholder="על מה בא לך לכתוב?" /></label>
+          <label>תוכן הפוסט<textarea maxLength="10000" required value={blogDraft.content} onChange={event => setBlogDraft(previous => ({ ...previous, content: event.target.value }))} placeholder="שתף מחשבות, רעיונות או סיפור..." /></label>
+          <button className="primary-button" type="submit">פרסום פוסט · 5 נקודות</button>
+        </form>
+        {blogPosts.length ? <div className="blog-post-list">{blogPosts.map(post => {
+          const commentDraft = blogCommentDrafts[post._id] || { author: '', content: '' };
+          return <article className="blog-post" key={post._id}>
+            <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>
+            <p className="blog-post-content">{post.content}</p>
+            <div className="blog-comments"><h4>תגובות <span>{post.comments?.length || 0}</span></h4>
+              {post.comments?.length ? <ul>{post.comments.map(comment => <li key={comment._id}><strong>{comment.author}</strong><span>{comment.content}</span><small>{new Date(comment.createdAt).toLocaleDateString('he-IL')}</small></li>)}</ul> : <p className="blog-no-comments">עדיין אין תגובות לפוסט.</p>}
+              <div className="blog-comment-compose"><input aria-label="שם המגיב" maxLength="80" placeholder="שם המגיב" value={commentDraft.author} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { ...commentDraft, author: event.target.value } }))} /><input aria-label="תוכן התגובה" maxLength="2000" placeholder="כתיבת תגובה" value={commentDraft.content} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { ...commentDraft, content: event.target.value } }))} /><button className="update-replies" onClick={() => addBlogComment(post)}>הוספת תגובה · 2 נקודות</button></div>
+            </div>
+          </article>;
+        })}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>הפוסט הראשון שלך מתחיל כאן</h3><p>שתף משהו שחשוב לך — כל פוסט שתפרסם יוסיף 5 נקודות להתקדמות שלך.</p></div>}
+      </section>
+
+      <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`} id="comments">
         <div className="section-heading">
           <button className="form-toggle" onClick={() => setIsFormOpen(!isFormOpen)} aria-expanded={isFormOpen}>
             <span><span className="section-kicker">{editingConversationId ? 'עדכון כרטיס' : 'שמירה חדשה'}</span><h2>{editingConversationId ? 'עדכן תגובה במעקב' : 'הוסף תגובה למעקב'}</h2></span>
@@ -287,6 +502,16 @@ function App() {
               <p className="page-title">{conversation.pageTitle}</p>
               {conversation.yourComment && <p className="comment-quote">“{conversation.yourComment}”</p>}
               <span className="saved-date">נשמר {new Date(conversation.createdAt).toLocaleDateString('he-IL')}</span>
+              <div className="reaction-tools">
+                {editingReactionsId === conversation._id ? <>
+                  <label>👍 <input type="number" min="0" value={reactionsDraft.likesCount} onChange={event => setReactionsDraft(previous => ({ ...previous, likesCount: event.target.value }))} aria-label="מספר לייקים" /></label>
+                  <label>👎 <input type="number" min="0" value={reactionsDraft.dislikesCount} onChange={event => setReactionsDraft(previous => ({ ...previous, dislikesCount: event.target.value }))} aria-label="מספר דיסלייקים" /></label>
+                  <button className="update-replies" onClick={() => updateReactions(conversation)}>שמור</button>
+                </> : <>
+                  <span>👍 {conversation.likesCount || 0}</span><span>👎 {conversation.dislikesCount || 0}</span>
+                  <button className="card-update-button" onClick={() => startReactionsEdit(conversation)}>עדכון לייקים</button>
+                </>}
+              </div>
               <div className="actions">
                 <button className="jump-link" onClick={() => { navigator.clipboard.writeText(conversation.yourComment || ''); window.open(`${conversation.siteUrl}#comment-${conversation.commentId}`, '_blank'); }}>פתח וחפש ↗</button>
                 <div className="response-tools">
