@@ -304,6 +304,11 @@ textarea { min-height: 96px; resize: vertical; }
 .blog-post-content { margin: 16px 0; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .blog-source-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0 0 16px; padding: 8px 11px; color: var(--mint-strong); border: 1px solid #bfe8d2; border-radius: 10px; background: var(--page-bg); font-size: 13px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
 .blog-source-link:hover { border-color: var(--mint-strong); background: var(--mint); }
+.blog-source-reaction-summary { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--page-bg); font-size: 12px; }
+.blog-source-reaction-label { color: var(--muted); font-weight: 700; }
+.blog-source-reaction-count { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; background: var(--surface); font-weight: 800; }
+.blog-source-reaction-count.like { color: #24845c; }
+.blog-source-reaction-count.dislike { color: #a65e55; }
 .blog-post-reactions { display: flex; gap: 8px; margin: 0 0 16px; }
 .blog-reaction-button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; background: var(--page-bg); font-size: 13px; font-weight: 700; transition: border-color .2s, background .2s, color .2s; }
 .blog-reaction-button:hover, .blog-reaction-button.selected { color: var(--mint-strong); border-color: #a9d8c1; background: var(--mint); }

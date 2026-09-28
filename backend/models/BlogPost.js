@@ -21,6 +21,8 @@ const BlogPostSchema = new mongoose.Schema({
   },
   likesCount: { type: Number, default: 0, min: 0 },
   dislikesCount: { type: Number, default: 0, min: 0 },
+  sourceLikesCount: { type: Number, default: 0, min: 0 },
+  sourceDislikesCount: { type: Number, default: 0, min: 0 },
   comments: { type: [BlogCommentSchema], default: [] },
   createdAt: { type: Date, default: Date.now },
 });

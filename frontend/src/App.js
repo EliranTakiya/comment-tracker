@@ -40,6 +40,7 @@ function App() {
   const [blogPosts, setBlogPosts] = useState([]);
   const [copiedSourcePostId, setCopiedSourcePostId] = useState(null);
   const [blogDraft, setBlogDraft] = useState({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+  const [blogDraftSourceConversationIds, setBlogDraftSourceConversationIds] = useState([]);
   const [blogCommentDrafts, setBlogCommentDrafts] = useState({});
   const [pendingBlogReactions, setPendingBlogReactions] = useState({});
   const [topicFilter, setTopicFilter] = useState('all');
@@ -123,6 +124,7 @@ function App() {
     setConvos([]);
     setBlogPosts([]);
     setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+    setBlogDraftSourceConversationIds([]);
     setBlogCommentDrafts({});
     setAuthMode('login');
   };
@@ -190,9 +192,13 @@ function App() {
     }
     if (!title || !content) return;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, { author, title, content, sourceTitle, sourceUrl });
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, {
+        author, title, content, sourceTitle, sourceUrl,
+        sourceConversationIds: blogDraftSourceConversationIds,
+      });
       setBlogPosts(previous => [response.data, ...previous]);
       setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+      setBlogDraftSourceConversationIds([]);
     } catch (err) {
       console.error('Create blog post error:', err.response?.data || err.message);
       alert('שמירת הפוסט נכשלה.');
@@ -200,9 +206,11 @@ function App() {
   };
 
   const cancelBlogDraft = () => {
-    const hasDraft = Object.values(blogDraft).some(value => value.trim());
+    const hasDraft = Object.values(blogDraft).some(value => value.trim())
+      || blogDraftSourceConversationIds.length > 0;
     if (hasDraft && !window.confirm('למחוק את טיוטת הפוסט?')) return;
     setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+    setBlogDraftSourceConversationIds([]);
   };
 
   const deleteBlogPost = async (post) => {
@@ -255,6 +263,11 @@ function App() {
       <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{showDelete && String(post.ownerId || '') === currentUser.id && <button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button>}</div>
       <p className="blog-post-content">{post.content}</p>
       {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
+      {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-source-reaction-summary" aria-label="לייקים ודיסלייקים של התגובה המקורית">
+        <span className="blog-source-reaction-label">בתגובה המקורית</span>
+        <span className="blog-source-reaction-count like">👍 {post.sourceLikesCount || 0}</span>
+        <span className="blog-source-reaction-count dislike">👎 {post.sourceDislikesCount || 0}</span>
+      </div>}
       <div className="blog-post-reactions" aria-label="תגובות לפוסט">
         <button className={`blog-reaction-button ${post.myReaction === 'like' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'like'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'like')}>👍 לייק <span>{post.likesCount || 0}</span></button>
         <button className={`blog-reaction-button ${post.myReaction === 'dislike' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'dislike'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'dislike')}>👎 דיסלייק <span>{post.dislikesCount || 0}</span></button>
@@ -289,6 +302,9 @@ function App() {
     const selectedText = selection && selection.rangeCount && quote?.contains(selection.anchorNode)
       && quote.contains(selection.focusNode) ? selection.toString().trim() : '';
     const textToAdd = selectedText || conversation.yourComment || '';
+    setBlogDraftSourceConversationIds(previous => previous.includes(conversation._id)
+      ? previous
+      : [...previous, conversation._id]);
     setBlogDraft(previous => ({
       title: previous.title || `מתוך תגובה על: ${conversation.pageTitle || conversation.siteName}`,
       content: previous.content ? `${previous.content}\n\n${textToAdd}` : textToAdd,

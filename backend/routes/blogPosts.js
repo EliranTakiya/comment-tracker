@@ -1,6 +1,8 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const BlogPost = require('../models/BlogPost');
 const BlogReaction = require('../models/BlogReaction');
+const Conversation = require('../models/Conversation');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -53,12 +55,28 @@ router.post('/', async (req, res) => {
     const content = String(req.body.content || '').trim();
     const sourceTitle = String(req.body.sourceTitle || '').trim();
     const sourceUrl = String(req.body.sourceUrl || '').trim();
+    const sourceConversationIds = [...new Set(
+      (Array.isArray(req.body.sourceConversationIds) ? req.body.sourceConversationIds : []).map(String)
+    )];
     if (!author || !title || !content) return res.status(400).json({ message: 'Author, title and content are required' });
     if (author.length > 80 || title.length > 160 || content.length > 10000) return res.status(400).json({ message: 'Post is too long' });
     if (sourceTitle.length > 300 || sourceUrl.length > 2048 || (sourceUrl && !/^https?:\/\/\S+$/i.test(sourceUrl))) {
       return res.status(400).json({ message: 'Source must be a valid http or https URL' });
     }
-    const post = await BlogPost.create({ ownerId: req.user._id, author, title, content, sourceTitle, sourceUrl });
+    if (sourceConversationIds.length > 50 || sourceConversationIds.some(id => !mongoose.isValidObjectId(id))) {
+      return res.status(400).json({ message: 'Invalid source comments' });
+    }
+    const sourceConversations = sourceConversationIds.length
+      ? await Conversation.find({ _id: { $in: sourceConversationIds }, userId: req.user._id }).select('likesCount dislikesCount').lean()
+      : [];
+    if (sourceConversations.length !== sourceConversationIds.length) {
+      return res.status(400).json({ message: 'Source comments must belong to your account' });
+    }
+    const sourceLikesCount = sourceConversations.reduce((total, conversation) => total + (conversation.likesCount || 0), 0);
+    const sourceDislikesCount = sourceConversations.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
+    const post = await BlogPost.create({
+      ownerId: req.user._id, author, title, content, sourceTitle, sourceUrl, sourceLikesCount, sourceDislikesCount,
+    });
     res.status(201).json({ ...post.toObject(), likesCount: 0, dislikesCount: 0, myReaction: null });
   } catch (err) {
     console.error(err);
