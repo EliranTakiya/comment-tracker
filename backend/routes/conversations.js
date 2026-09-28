@@ -29,6 +29,26 @@ router.put('/:id/replies', async (req, res) => {
     }
   });
 
+router.put('/:id/reactions', async (req, res) => {
+    try {
+      const likesCount = Number(req.body.likesCount);
+      const dislikesCount = Number(req.body.dislikesCount);
+      if (!Number.isInteger(likesCount) || likesCount < 0 || !Number.isInteger(dislikesCount) || dislikesCount < 0) {
+        return res.status(400).json({ message: 'Reaction counts must be non-negative integers' });
+      }
+      const updated = await Conversation.findByIdAndUpdate(
+        req.params.id,
+        { likesCount, dislikesCount },
+        { new: true, runValidators: true }
+      );
+      if (!updated) return res.status(404).json({ message: 'Conversation not found' });
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
+
   router.put('/:id', async (req, res) => {
       try {
         const updated = await Conversation.findByIdAndUpdate(

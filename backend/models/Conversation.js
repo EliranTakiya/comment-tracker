@@ -8,6 +8,8 @@ const ConversationSchema = new mongoose.Schema({
     yourComment: { type: String, required: true },
     hint: String,               // NEW: optional hint
     repliesCount: { type: Number, default: 0, min: 0 },
+    likesCount: { type: Number, default: 0, min: 0 },
+    dislikesCount: { type: Number, default: 0, min: 0 },
     replies: [ReplySchema], createdAt: { type: Date, default: Date.now }
 });
 module.exports = mongoose.model('Conversation', ConversationSchema);
