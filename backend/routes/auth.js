@@ -67,12 +67,25 @@ async function createSession(user, res) {
 
 async function migrateLegacyData(user) {
   const setup = await AccountSetup.findById('legacy-owner');
-  if (!setup || setup.ownerId.toString() !== user._id.toString() || setup.migrationComplete) return;
-  await Conversation.updateMany({ userId: { $exists: false } }, { $set: { userId: user._id } });
+  if (!setup || setup.ownerId.toString() !== user._id.toString()) return;
+
+  // Retry claiming legacy posts for the original owner even after the broader
+  // one-time data migration was marked complete. This repairs posts left
+  // unowned if the display name was corrected later, including anonymous
+  // legacy posts created before author names were collected.
   await BlogPost.updateMany(
-    { ownerId: { $exists: false }, author: user.displayName },
-    { $set: { ownerId: user._id } }
+    {
+      $and: [
+        { $or: [{ ownerId: { $exists: false } }, { ownerId: null }] },
+        { $or: [{ author: user.displayName }, { author: null }, { author: '' }] },
+      ],
+    },
+    { $set: { ownerId: user._id, author: user.displayName } }
   );
+
+  if (setup.migrationComplete) return;
+
+  await Conversation.updateMany({ userId: { $exists: false } }, { $set: { userId: user._id } });
   await ProfileStats.updateOne(
     { key: 'main', userId: { $exists: false } },
     { $set: { userId: user._id, key: user._id.toString() } }
