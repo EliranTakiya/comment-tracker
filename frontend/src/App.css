@@ -304,16 +304,32 @@ textarea { min-height: 96px; resize: vertical; }
 .blog-post-content { margin: 16px 0; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .blog-source-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0 0 16px; padding: 8px 11px; color: var(--mint-strong); border: 1px solid #bfe8d2; border-radius: 10px; background: var(--page-bg); font-size: 13px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
 .blog-source-link:hover { border-color: var(--mint-strong); background: var(--mint); }
-.blog-source-reaction-summary { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--page-bg); font-size: 12px; }
-.blog-source-reaction-label { color: var(--muted); font-weight: 700; }
-.blog-source-reaction-count { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; background: var(--surface); font-weight: 800; }
-.blog-source-reaction-count.like { color: #24845c; }
-.blog-source-reaction-count.dislike { color: #a65e55; }
-.blog-post-reactions { display: flex; gap: 8px; margin: 0 0 16px; }
-.blog-reaction-button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; background: var(--page-bg); font-size: 13px; font-weight: 700; transition: border-color .2s, background .2s, color .2s; }
-.blog-reaction-button:hover, .blog-reaction-button.selected { color: var(--mint-strong); border-color: #a9d8c1; background: var(--mint); }
-.blog-reaction-button:disabled { cursor: wait; opacity: .65; }
-.blog-reaction-button span { color: var(--ink); font: 700 13px 'Space Grotesk',sans-serif; }
+.blog-original-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; padding: 10px 13px; border: 1px dashed var(--line); border-radius: 14px; background: var(--page-bg); }
+.blog-original-metrics-copy { display: flex; min-width: 180px; flex: 1 1 auto; align-items: center; gap: 9px; }
+.blog-original-mark { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; color: var(--muted); border-radius: 9px; background: var(--surface); font-size: 17px; }
+.blog-original-metrics-copy div { display: grid; gap: 2px; }
+.blog-original-metrics-copy strong { font-size: 12px; }
+.blog-original-metrics-copy small, .blog-original-metric small { color: var(--muted); font-size: 10px; }
+.blog-original-metric { display: inline-flex; min-width: 76px; align-items: center; gap: 5px; padding: 6px 9px; border-radius: 10px; background: var(--surface); }
+.blog-original-metric strong { font: 700 13px 'Space Grotesk',sans-serif; }
+.blog-original-metric small { margin-inline-start: auto; }
+.blog-original-metric.like { color: #24845c; }
+.blog-original-metric.dislike { color: #a65e55; }
+.blog-vote-panel { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin: 0 0 18px; padding: 15px 16px; border: 1px solid color-mix(in srgb, var(--mint-strong) 24%, var(--line)); border-radius: 16px; background: linear-gradient(120deg, color-mix(in srgb, var(--mint) 48%, var(--surface)), var(--surface) 72%); }
+.blog-vote-heading { display: grid; gap: 3px; }
+.blog-vote-heading > span { color: var(--mint-strong); font-size: 10px; font-weight: 900; letter-spacing: .08em; }
+.blog-vote-heading strong { font-size: 14px; }
+.blog-vote-heading small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.blog-vote-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.blog-vote-option { display: grid; min-width: 132px; grid-template-columns: 32px 1fr auto; align-items: center; gap: 7px; padding: 8px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: right; transition: transform .18s, border-color .18s, background .18s; }
+.blog-vote-option:hover { transform: translateY(-1px); }
+.blog-vote-option.like.selected { border-color: #83c7a2; background: var(--mint); }
+.blog-vote-option.dislike.selected { border-color: #dfaaa3; background: #fff0ed; }
+.blog-vote-option:disabled { cursor: wait; opacity: .65; }
+.blog-vote-symbol { display: grid; width: 30px; height: 30px; place-items: center; color: var(--mint-strong); border-radius: 9px; background: var(--page-bg); font-size: 19px; font-weight: 900; }
+.blog-vote-option.dislike .blog-vote-symbol { color: #a65e55; }
+.blog-vote-label { font-size: 11px; font-weight: 800; white-space: nowrap; }
+.blog-vote-option strong { min-width: 18px; font: 700 13px 'Space Grotesk',sans-serif; text-align: center; }
 .blog-comments { padding-top: 14px; border-top: 1px solid var(--line); }
 .blog-comments h4 { margin: 0 0 8px; font-size: 14px; }
 .blog-comments h4 span { color: var(--mint-strong); }
@@ -404,7 +420,10 @@ textarea { min-height: 96px; resize: vertical; }
   .blog-post-heading { align-items: flex-start; }
   .blog-post-heading h3 { overflow-wrap: anywhere; }
   .blog-comment-compose input { min-width: 0; }
-  .blog-reaction-button { min-height: 42px; }
+  .blog-vote-panel { align-items: stretch; flex-direction: column; gap: 12px; }
+  .blog-vote-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .blog-vote-option { min-width: 0; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 7px; }
+  .blog-vote-label { white-space: normal; }
   .conversation h3 { min-width: 0; overflow-wrap: anywhere; }
   .page-title, .comment-quote { overflow-wrap: anywhere; }
   .reaction-tools { flex-wrap: wrap; gap: 8px; }

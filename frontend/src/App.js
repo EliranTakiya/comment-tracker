@@ -263,16 +263,22 @@ function App() {
       <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{showDelete && String(post.ownerId || '') === currentUser.id && <button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button>}</div>
       <p className="blog-post-content">{post.content}</p>
       {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
-      {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-source-reaction-summary" aria-label="לייקים ודיסלייקים של התגובה המקורית">
-        <span className="blog-source-reaction-label">בתגובה המקורית</span>
-        <span className="blog-source-reaction-count like">👍 {post.sourceLikesCount || 0}</span>
-        <span className="blog-source-reaction-count dislike">👎 {post.sourceDislikesCount || 0}</span>
+      {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-original-metrics" aria-label="נתוני התגובה המקורית, לקריאה בלבד">
+        <div className="blog-original-metrics-copy"><span className="blog-original-mark">↗</span><div><strong>נתוני התגובה המקורית</strong><small>הועברו מהתגובה השמורה</small></div></div>
+        <div className="blog-original-metric like"><span aria-hidden="true">👍</span><strong>{post.sourceLikesCount || 0}</strong><small>לייקים</small></div>
+        <div className="blog-original-metric dislike"><span aria-hidden="true">👎</span><strong>{post.sourceDislikesCount || 0}</strong><small>דיסלייקים</small></div>
       </div>}
-      <div className="blog-post-reactions" aria-label="תגובות לפוסט">
-        <button className={`blog-reaction-button ${post.myReaction === 'like' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'like'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'like')}>👍 לייק <span>{post.likesCount || 0}</span></button>
-        <button className={`blog-reaction-button ${post.myReaction === 'dislike' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'dislike'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'dislike')}>👎 דיסלייק <span>{post.dislikesCount || 0}</span></button>
-      </div>
-      <div className="blog-comments"><h4>תגובות <span>{post.comments?.length || 0}</span></h4>
+      <section className="blog-vote-panel" aria-label="דירוג הפוסט">
+        <div className="blog-vote-heading"><span>דירוג הקהילה</span><strong>מה דעתך על הפוסט?</strong><small>ההצבעה לפוסט נספרת בנפרד מנתוני התגובה המקורית.</small></div>
+        <div className="blog-vote-actions">
+          <button className={`blog-vote-option like ${post.myReaction === 'like' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'like'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'like')}>
+            <span className="blog-vote-symbol" aria-hidden="true">↑</span><span className="blog-vote-label">לייק לפוסט</span><strong>{post.likesCount || 0}</strong>
+          </button>
+          <button className={`blog-vote-option dislike ${post.myReaction === 'dislike' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'dislike'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'dislike')}>
+            <span className="blog-vote-symbol" aria-hidden="true">↓</span><span className="blog-vote-label">דיסלייק לפוסט</span><strong>{post.dislikesCount || 0}</strong>
+          </button>
+        </div>
+      </section>      <div className="blog-comments"><h4>תגובות <span>{post.comments?.length || 0}</span></h4>
         {post.comments?.length ? <ul>{post.comments.map(comment => <li key={comment._id}><strong>{comment.author}</strong><span>{comment.content}</span><small>{new Date(comment.createdAt).toLocaleDateString('he-IL')}</small></li>)}</ul> : <p className="blog-no-comments">עדיין אין תגובות לפוסט.</p>}
         <div className="blog-comment-compose"><input aria-label="תוכן התגובה" maxLength="2000" placeholder={nickname ? `תגובה בשם ${nickname}` : 'בחרו כינוי לפני כתיבת תגובה'} value={commentDraft.content} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { content: event.target.value } }))} /><button className="update-replies" onClick={() => addBlogComment(post)}>הוספת תגובה · 2 נקודות</button></div>
       </div>
