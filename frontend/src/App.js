@@ -30,10 +30,14 @@ function App() {
   const [form, setForm] = useState(emptyForm);
   const [convos, setConvos] = useState([]);
   const [blogPosts, setBlogPosts] = useState([]);
-  const [blogDraft, setBlogDraft] = useState({ title: '', content: '' });
+  const [copiedSourcePostId, setCopiedSourcePostId] = useState(null);
+  const [blogDraft, setBlogDraft] = useState({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
   const [blogCommentDrafts, setBlogCommentDrafts] = useState({});
-  const [blogActivity, setBlogActivity] = useState({ blogPostsCount: 0, blogCommentsReceived: 0, blogLikesCount: 0, blogDislikesCount: 0 });
-  const [blogActivityDraft, setBlogActivityDraft] = useState({ blogPostsCount: '0', blogCommentsReceived: '0', blogLikesCount: '0', blogDislikesCount: '0' });
+  const [blogReactions, setBlogReactions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('comment-tracker-blog-reactions') || '{}'); }
+    catch { return {}; }
+  });
+  const [pendingBlogReactions, setPendingBlogReactions] = useState({});
   const [topicFilter, setTopicFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [customDate, setCustomDate] = useState('');
@@ -50,6 +54,7 @@ function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('comment-tracker-theme') || 'day');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [nickname, setNickname] = useState(() => localStorage.getItem('comment-tracker-nickname') || '');
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
@@ -87,28 +92,19 @@ function App() {
     }
   };
 
-  const loadBlogActivity = async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/profile-stats`);
-      const activity = { blogPostsCount: 0, blogCommentsReceived: 0, blogLikesCount: 0, blogDislikesCount: 0, ...response.data };
-      setBlogActivity(activity);
-      setBlogActivityDraft(Object.fromEntries(Object.entries(activity).filter(([key]) => key !== '_id' && key !== 'key' && key !== '__v').map(([key, value]) => [key, String(value)])));
-    } catch (err) {
-      console.error('Load blog activity error:', err.response?.data || err.message);
-    }
-  };
-
-  useEffect(() => { load(); loadBlogActivity(); loadBlogPosts(); }, []);
+  useEffect(() => { load(); loadBlogPosts(); }, []);
 
   const createBlogPost = async (event) => {
     event.preventDefault();
     const title = blogDraft.title.trim();
     const content = blogDraft.content.trim();
+    const sourceTitle = blogDraft.sourceTitle.trim();
+    const sourceUrl = blogDraft.sourceUrl.trim();
     if (!title || !content) return;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, { title, content });
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, { title, content, sourceTitle, sourceUrl });
       setBlogPosts(previous => [response.data, ...previous]);
-      setBlogDraft({ title: '', content: '' });
+      setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
     } catch (err) {
       console.error('Create blog post error:', err.response?.data || err.message);
       alert('שמירת הפוסט נכשלה.');
@@ -141,25 +137,58 @@ function App() {
     }
   };
 
-  const saveBlogActivity = async () => {
-    const values = {
-      ...Object.fromEntries(Object.entries(blogActivityDraft).map(([key, value]) => [key, Number(value)])),
-      blogPostsCount: blogPosts.length,
-      blogCommentsReceived: blogCommentsCount,
-    };
-    if (Object.values(values).some(value => !Number.isInteger(value) || value < 0)) {
-      alert('יש להזין מספרים שלמים, 0 או יותר.');
+  const copyPostBeforeOpeningSource = (post) => {
+    if (!navigator.clipboard?.writeText) {
+      window.alert('הכתבה נפתחת, אבל ההעתקה האוטומטית אינה זמינה בדפדפן הזה.');
       return;
     }
+    navigator.clipboard.writeText(post.content).then(() => {
+      setCopiedSourcePostId(post._id);
+      window.setTimeout(() => setCopiedSourcePostId(current => current === post._id ? null : current), 2500);
+    }).catch((error) => {
+      console.error('Copy post content error:', error);
+      window.alert('הכתבה נפתחת, אבל העתקת התוכן נכשלה.');
+    });
+  };
+
+  const reactToBlogPost = async (post, reaction) => {
+    if (pendingBlogReactions[post._id]) return;
+    const current = blogReactions[post._id] || null;
+    const next = current === reaction ? null : reaction;
+    const likesDelta = Number(next === 'like') - Number(current === 'like');
+    const dislikesDelta = Number(next === 'dislike') - Number(current === 'dislike');
+    if (!likesDelta && !dislikesDelta) return;
+    setPendingBlogReactions(previous => ({ ...previous, [post._id]: true }));
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/profile-stats`, values);
-      const saved = { ...values, ...response.data };
-      setBlogActivity(saved);
-      setBlogActivityDraft(Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])));
+      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/reactions`, { likesDelta, dislikesDelta });
+      setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
+      const updatedReactions = { ...blogReactions };
+      if (next) updatedReactions[post._id] = next;
+      else delete updatedReactions[post._id];
+      localStorage.setItem('comment-tracker-blog-reactions', JSON.stringify(updatedReactions));
+      setBlogReactions(updatedReactions);
     } catch (err) {
-      console.error('Save blog activity error:', err.response?.data || err.message);
-      alert('שמירת פעילות הבלוג נכשלה.');
+      console.error('Update blog reaction error:', err.response?.data || err.message);
+      alert('עדכון הלייק או הדיסלייק נכשל.');
+    } finally {
+      setPendingBlogReactions(previous => ({ ...previous, [post._id]: false }));
     }
+  };
+
+  const addSavedCommentToBlog = (conversation) => {
+    const quote = document.querySelector(`[data-comment-id="${conversation._id}"]`);
+    const selection = window.getSelection();
+    const selectedText = selection && selection.rangeCount && quote?.contains(selection.anchorNode)
+      && quote.contains(selection.focusNode) ? selection.toString().trim() : '';
+    const textToAdd = selectedText || conversation.yourComment || '';
+    setBlogDraft(previous => ({
+      title: previous.title || `מתוך תגובה על: ${conversation.pageTitle || conversation.siteName}`,
+      content: previous.content ? `${previous.content}\n\n${textToAdd}` : textToAdd,
+      sourceTitle: previous.sourceTitle || conversation.pageTitle || conversation.siteName || '',
+      sourceUrl: previous.sourceUrl || conversation.siteUrl || '',
+    }));
+    document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => document.querySelector('.blog-compose textarea')?.focus(), 350);
   };
 
   const submit = async () => {
@@ -295,8 +324,10 @@ function App() {
   const blogCommentsCount = blogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const pointsFromBlogPosts = blogPosts.length * 5;
   const pointsFromBlogComments = blogCommentsCount * 2;
-  const pointsFromBlogLikes = blogActivity.blogLikesCount * 2;
-  const pointsFromBlogDislikes = blogActivity.blogDislikesCount * -2;
+  const totalBlogLikes = blogPosts.reduce((total, post) => total + (post.likesCount || 0), 0);
+  const totalBlogDislikes = blogPosts.reduce((total, post) => total + (post.dislikesCount || 0), 0);
+  const pointsFromBlogLikes = totalBlogLikes * 2;
+  const pointsFromBlogDislikes = totalBlogDislikes * -2;
   const rawPoints = pointsFromSavedComments + pointsFromCommentLikes + pointsFromCommentDislikes
     + pointsFromBlogPosts + pointsFromBlogComments + pointsFromBlogLikes + pointsFromBlogDislikes;
   const totalPoints = Math.max(0, rawPoints);
@@ -360,7 +391,14 @@ function App() {
       </header>
 
       <nav className="main-nav" aria-label="ניווט ראשי">
-        <a href="#home">ראשי</a><a href="#comments">התגובות שלי</a><a href="#statistics">הסטטיסטיקות שלי</a><a href="#progress">ההתקדמות שלי</a><a href="#blog">הבלוג שלי</a>
+        <button className="mobile-nav-toggle" type="button" aria-expanded={isMobileNavOpen} aria-controls="main-nav-links" onClick={() => setIsMobileNavOpen(open => !open)}>
+          <span className={`hamburger-icon ${isMobileNavOpen ? 'is-open' : ''}`} aria-hidden="true"><i /><i /><i /></span>
+          <span>{isMobileNavOpen ? 'סגירת תפריט' : 'ניווט באתר'}</span>
+          <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
+        </button>
+        <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
+          <a href="#home" onClick={() => setIsMobileNavOpen(false)}>ראשי</a><a href="#comments" onClick={() => setIsMobileNavOpen(false)}>התגובות שלי</a><a href="#statistics" onClick={() => setIsMobileNavOpen(false)}>הסטטיסטיקות שלי</a><a href="#progress" onClick={() => setIsMobileNavOpen(false)}>ההתקדמות שלי</a><a href="#blog" onClick={() => setIsMobileNavOpen(false)}>הבלוג שלי</a>
+        </div>
       </nav>
 
       <section className="statistics-section" id="statistics" aria-labelledby="statistics-title">
@@ -398,14 +436,13 @@ function App() {
         </div>
         <div className="blog-activity-panel">
           <h3>פעילות הבלוג</h3>
-          <p>מספר הפוסטים והתגובות מתעדכן אוטומטית. אפשר להזין ידנית לייקים ודיסלייקים שהתקבלו בבלוג.</p>
+          <p>הנתונים מתעדכנים אוטומטית לפי הפוסטים והתגובות בבלוג.</p>
           <div className="blog-activity-grid">
             <div className="blog-count"><span>פוסטים שפורסמו</span><strong>{blogPosts.length}</strong></div>
             <div className="blog-count"><span>תגובות שהתקבלו</span><strong>{blogCommentsCount}</strong></div>
-            <label>לייקים חיוביים בבלוג<input type="number" min="0" value={blogActivityDraft.blogLikesCount} onChange={event => setBlogActivityDraft(previous => ({ ...previous, blogLikesCount: event.target.value }))} /></label>
-            <label>דיסלייקים בבלוג<input type="number" min="0" value={blogActivityDraft.blogDislikesCount} onChange={event => setBlogActivityDraft(previous => ({ ...previous, blogDislikesCount: event.target.value }))} /></label>
+            <div className="blog-count"><span>לייקים לפוסטים</span><strong>{totalBlogLikes}</strong></div>
+            <div className="blog-count"><span>דיסלייקים לפוסטים</span><strong>{totalBlogDislikes}</strong></div>
           </div>
-          <button className="primary-button" onClick={saveBlogActivity}>שמירת נתוני הבלוג</button>
         </div>
       </section>
 
@@ -414,6 +451,7 @@ function App() {
         <form className="blog-compose" onSubmit={createBlogPost}>
           <label>כותרת הפוסט<input maxLength="160" required value={blogDraft.title} onChange={event => setBlogDraft(previous => ({ ...previous, title: event.target.value }))} placeholder="על מה בא לך לכתוב?" /></label>
           <label>תוכן הפוסט<textarea maxLength="10000" required value={blogDraft.content} onChange={event => setBlogDraft(previous => ({ ...previous, content: event.target.value }))} placeholder="שתף מחשבות, רעיונות או סיפור..." /></label>
+          <label>קישור לכתבה המקורית (לא חובה)<input type="url" maxLength="2048" value={blogDraft.sourceUrl} onChange={event => setBlogDraft(previous => ({ ...previous, sourceUrl: event.target.value }))} placeholder="https://example.com/article" dir="ltr" /></label>
           <button className="primary-button" type="submit">פרסום פוסט · 5 נקודות</button>
         </form>
         {blogPosts.length ? <div className="blog-post-list">{blogPosts.map(post => {
@@ -421,6 +459,11 @@ function App() {
           return <article className="blog-post" key={post._id}>
             <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>
             <p className="blog-post-content">{post.content}</p>
+            {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
+            <div className="blog-post-reactions" aria-label="תגובות לפוסט">
+              <button className={`blog-reaction-button ${blogReactions[post._id] === 'like' ? 'selected' : ''}`} aria-pressed={blogReactions[post._id] === 'like'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'like')}>👍 לייק <span>{post.likesCount || 0}</span></button>
+              <button className={`blog-reaction-button ${blogReactions[post._id] === 'dislike' ? 'selected' : ''}`} aria-pressed={blogReactions[post._id] === 'dislike'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'dislike')}>👎 דיסלייק <span>{post.dislikesCount || 0}</span></button>
+            </div>
             <div className="blog-comments"><h4>תגובות <span>{post.comments?.length || 0}</span></h4>
               {post.comments?.length ? <ul>{post.comments.map(comment => <li key={comment._id}><strong>{comment.author}</strong><span>{comment.content}</span><small>{new Date(comment.createdAt).toLocaleDateString('he-IL')}</small></li>)}</ul> : <p className="blog-no-comments">עדיין אין תגובות לפוסט.</p>}
               <div className="blog-comment-compose"><input aria-label="שם המגיב" maxLength="80" placeholder="שם המגיב" value={commentDraft.author} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { ...commentDraft, author: event.target.value } }))} /><input aria-label="תוכן התגובה" maxLength="2000" placeholder="כתיבת תגובה" value={commentDraft.content} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { ...commentDraft, content: event.target.value } }))} /><button className="update-replies" onClick={() => addBlogComment(post)}>הוספת תגובה · 2 נקודות</button></div>
@@ -500,7 +543,7 @@ function App() {
                 <span className="topic-tag">{conversation.hint || 'חדשות כללי'}</span>
               </div>
               <p className="page-title">{conversation.pageTitle}</p>
-              {conversation.yourComment && <p className="comment-quote">“{conversation.yourComment}”</p>}
+              {conversation.yourComment && <p className="comment-quote" data-comment-id={conversation._id}>“{conversation.yourComment}”</p>}
               <span className="saved-date">נשמר {new Date(conversation.createdAt).toLocaleDateString('he-IL')}</span>
               <div className="reaction-tools">
                 {editingReactionsId === conversation._id ? <>
@@ -515,6 +558,7 @@ function App() {
               <div className="actions">
                 <button className="jump-link" onClick={() => { navigator.clipboard.writeText(conversation.yourComment || ''); window.open(`${conversation.siteUrl}#comment-${conversation.commentId}`, '_blank'); }}>פתח וחפש ↗</button>
                 <div className="response-tools">
+                  <button className="card-update-button" title="סמן קטע מהתגובה כדי להוסיף רק אותו; אחרת תתווסף כל התגובה" onMouseDown={event => event.preventDefault()} onClick={() => addSavedCommentToBlog(conversation)}>הוסף לבלוג</button>
                   <button className="card-update-button" onClick={() => startConversationEdit(conversation)}>עדכן כרטיס</button>
                   <div className="replies-count">
                     <span>הגיבו לי:</span>
