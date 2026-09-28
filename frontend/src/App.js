@@ -111,6 +111,12 @@ function App() {
     }
   };
 
+  const cancelBlogDraft = () => {
+    const hasDraft = Object.values(blogDraft).some(value => value.trim());
+    if (hasDraft && !window.confirm('למחוק את טיוטת הפוסט?')) return;
+    setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+  };
+
   const deleteBlogPost = async (post) => {
     if (!window.confirm('למחוק את הפוסט ואת התגובות שלו?')) return;
     try {
@@ -452,7 +458,10 @@ function App() {
           <label>כותרת הפוסט<input maxLength="160" required value={blogDraft.title} onChange={event => setBlogDraft(previous => ({ ...previous, title: event.target.value }))} placeholder="על מה בא לך לכתוב?" /></label>
           <label>תוכן הפוסט<textarea maxLength="10000" required value={blogDraft.content} onChange={event => setBlogDraft(previous => ({ ...previous, content: event.target.value }))} placeholder="שתף מחשבות, רעיונות או סיפור..." /></label>
           <label>קישור לכתבה המקורית (לא חובה)<input type="url" maxLength="2048" value={blogDraft.sourceUrl} onChange={event => setBlogDraft(previous => ({ ...previous, sourceUrl: event.target.value }))} placeholder="https://example.com/article" dir="ltr" /></label>
-          <button className="primary-button" type="submit">פרסום פוסט · 5 נקודות</button>
+          <div className="blog-compose-actions">
+            <button className="primary-button" type="submit">פרסום פוסט · 5 נקודות</button>
+            <button className="blog-cancel-button" type="button" onClick={cancelBlogDraft}>ביטול</button>
+          </div>
         </form>
         {blogPosts.length ? <div className="blog-post-list">{blogPosts.map(post => {
           const commentDraft = blogCommentDrafts[post._id] || { author: '', content: '' };

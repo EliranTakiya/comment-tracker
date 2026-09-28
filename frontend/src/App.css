@@ -276,7 +276,10 @@ textarea { min-height: 96px; resize: vertical; }
 .blog-compose label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .blog-compose input, .blog-compose textarea { background: var(--surface); }
 .blog-compose textarea { min-height: 130px; }
-.blog-compose .primary-button { justify-self: start; }
+.blog-compose-actions { display: flex; align-items: center; gap: 9px; }
+.blog-compose-actions .primary-button { width: auto; }
+.blog-cancel-button { min-height: 44px; padding: 10px 16px; color: var(--muted); border: 1px solid var(--line); border-radius: 11px; background: var(--surface); font-weight: 700; }
+.blog-cancel-button:hover { color: #b25d4e; border-color: #e9b4aa; background: #fff0ed; }
 .blog-post-list { display: grid; gap: 14px; margin-top: 18px; }
 .blog-post { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .blog-post-heading { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
@@ -366,7 +369,9 @@ textarea { min-height: 96px; resize: vertical; }
   .blog-comment-compose button { width: 100%; min-height: 38px; }
   .blog-comments li { grid-template-columns: 1fr auto; gap: 4px 8px; }
   .blog-comments li span { grid-column: 1 / -1; grid-row: 2; }
-  .blog-compose .primary-button { justify-self: stretch; }
+  .blog-compose-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .blog-compose-actions .primary-button { width: 100%; }
+  .blog-cancel-button { min-width: 84px; }
   .list { grid-template-columns: 1fr; }
   .conversation { padding: 18px; }
   .topic-tag { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
