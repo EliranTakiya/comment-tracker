@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
+axios.defaults.withCredentials = true;
+
 const TOPICS = ['חדשות כללי', 'ספורט', 'כלכלה', 'פוליטיקה', 'אופנה', 'סלבס'];
 const DATE_FILTERS = [
   { value: 'all', label: 'כל התאריכים' },
@@ -26,6 +28,12 @@ const BADGES = [
 ];
 
 function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authStatus, setAuthStatus] = useState({ needsInitialOwner: false, setupCodeConfigured: false });
+  const [authMode, setAuthMode] = useState('login');
+  const [authDraft, setAuthDraft] = useState({ email: '', password: '', passwordConfirm: '', displayName: localStorage.getItem('comment-tracker-nickname') || '', setupCode: '' });
+  const [authError, setAuthError] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [convos, setConvos] = useState([]);
@@ -33,10 +41,6 @@ function App() {
   const [copiedSourcePostId, setCopiedSourcePostId] = useState(null);
   const [blogDraft, setBlogDraft] = useState({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
   const [blogCommentDrafts, setBlogCommentDrafts] = useState({});
-  const [blogReactions, setBlogReactions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('comment-tracker-blog-reactions') || '{}'); }
-    catch { return {}; }
-  });
   const [pendingBlogReactions, setPendingBlogReactions] = useState({});
   const [topicFilter, setTopicFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
@@ -51,18 +55,87 @@ function App() {
   const [reactionsDraft, setReactionsDraft] = useState({ likesCount: '0', dislikesCount: '0' });
   const [statisticsTopicFilter, setStatisticsTopicFilter] = useState('all');
   const [editingConversationId, setEditingConversationId] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('comment-tracker-theme') || 'day');
+  const [theme, setTheme] = useState('day');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [nickname, setNickname] = useState(() => localStorage.getItem('comment-tracker-nickname') || '');
+  const [nickname, setNickname] = useState('');
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
 
-  const changeTheme = (nextTheme) => {
-    setTheme(nextTheme);
-    localStorage.setItem('comment-tracker-theme', nextTheme);
+  useEffect(() => {
+    let active = true;
+    const initializeAuth = async () => {
+      try {
+        const status = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/auth/status`);
+        if (!active) return;
+        setAuthStatus(status.data);
+        if (status.data.needsInitialOwner) setAuthMode('register');
+        try {
+          const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/auth/me`);
+          if (active) setCurrentUser(response.data.user);
+        } catch (err) {
+          if (err.response?.status !== 401) setAuthError('לא הצלחנו להתחבר לשרת. נסו לרענן את העמוד.');
+        }
+      } catch (err) {
+        if (active) setAuthError('לא הצלחנו להתחבר לשרת. בדקו את חיבור האינטרנט ונסו שוב.');
+      } finally {
+        if (active) setAuthReady(true);
+      }
+    };
+    initializeAuth();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setNickname(currentUser.displayName);
+    setTheme(currentUser.theme || 'day');
+    setNicknameDraft(currentUser.displayName);
+  }, [currentUser]);
+
+  const submitAuth = async (event) => {
+    event.preventDefault();
+    setAuthError('');
+    const isRegister = authMode === 'register';
+    if (isRegister && authDraft.password !== authDraft.passwordConfirm) {
+      setAuthError('הסיסמאות אינן תואמות.');
+      return;
+    }
+    const endpoint = isRegister ? 'register' : 'login';
+    const payload = isRegister
+      ? { email: authDraft.email, password: authDraft.password, displayName: authDraft.displayName, setupCode: authDraft.setupCode }
+      : { email: authDraft.email, password: authDraft.password };
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/${endpoint}`, payload);
+      setCurrentUser(response.data.user);
+      if (isRegister) setAuthStatus(previous => ({ ...previous, needsInitialOwner: false }));
+      setAuthError('');
+    } catch (err) {
+      setAuthError(err.response?.data?.message || 'ההתחברות נכשלה. נסו שוב.');
+    }
+  };
+
+  const signOut = async () => {
+    try { await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/logout`); }
+    catch (err) { console.error('Sign out error:', err.response?.data || err.message); }
+    setCurrentUser(null);
+    setConvos([]);
+    setBlogPosts([]);
+    setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+    setBlogCommentDrafts({});
+    setAuthMode('login');
+  };
+
+  const changeTheme = async (nextTheme) => {
     setShowThemeMenu(false);
+    try {
+      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, { theme: nextTheme });
+      setCurrentUser(response.data.user);
+    } catch (err) {
+      console.error('Save theme error:', err.response?.data || err.message);
+      alert('שמירת ערכת הנושא נכשלה.');
+    }
   };
 
   const startNicknameEdit = () => {
@@ -70,12 +143,18 @@ function App() {
     setIsEditingNickname(true);
   };
 
-  const saveNickname = () => {
+  const saveNickname = async () => {
     const nextNickname = nicknameDraft.trim();
     if (!nextNickname) return;
-    setNickname(nextNickname);
-    localStorage.setItem('comment-tracker-nickname', nextNickname);
-    setIsEditingNickname(false);
+    try {
+      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, { displayName: nextNickname });
+      setCurrentUser(response.data.user);
+      setNickname(response.data.user.displayName);
+      setIsEditingNickname(false);
+    } catch (err) {
+      console.error('Save display name error:', err.response?.data || err.message);
+      alert('שמירת הכינוי נכשלה.');
+    }
   };
 
   const load = async () => {
@@ -92,17 +171,26 @@ function App() {
     }
   };
 
-  useEffect(() => { load(); loadBlogPosts(); }, []);
+  useEffect(() => {
+    if (!currentUser) return;
+    load();
+    loadBlogPosts();
+  }, [currentUser]);
 
   const createBlogPost = async (event) => {
     event.preventDefault();
+    const author = nickname.trim();
     const title = blogDraft.title.trim();
     const content = blogDraft.content.trim();
     const sourceTitle = blogDraft.sourceTitle.trim();
     const sourceUrl = blogDraft.sourceUrl.trim();
+    if (!author) {
+      alert('בחרו כינוי לפני פרסום פוסט.');
+      return;
+    }
     if (!title || !content) return;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, { title, content, sourceTitle, sourceUrl });
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, { author, title, content, sourceTitle, sourceUrl });
       setBlogPosts(previous => [response.data, ...previous]);
       setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
     } catch (err) {
@@ -130,8 +218,12 @@ function App() {
 
   const addBlogComment = async (post) => {
     const draft = blogCommentDrafts[post._id] || { author: '', content: '' };
-    const author = draft.author.trim();
+    const author = nickname.trim();
     const content = draft.content.trim();
+    if (!author) {
+      alert('בחרו כינוי לפני הוספת תגובה.');
+      return;
+    }
     if (!author || !content) return;
     try {
       const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/comments`, { author, content });
@@ -157,22 +249,32 @@ function App() {
     });
   };
 
+  const renderBlogPost = (post, showDelete = false) => {
+    const commentDraft = blogCommentDrafts[post._id] || { content: '' };
+    return <article className="blog-post" key={post._id}>
+      <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{showDelete && String(post.ownerId || '') === currentUser.id && <button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button>}</div>
+      <p className="blog-post-content">{post.content}</p>
+      {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
+      <div className="blog-post-reactions" aria-label="תגובות לפוסט">
+        <button className={`blog-reaction-button ${post.myReaction === 'like' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'like'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'like')}>👍 לייק <span>{post.likesCount || 0}</span></button>
+        <button className={`blog-reaction-button ${post.myReaction === 'dislike' ? 'selected' : ''}`} aria-pressed={post.myReaction === 'dislike'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'dislike')}>👎 דיסלייק <span>{post.dislikesCount || 0}</span></button>
+      </div>
+      <div className="blog-comments"><h4>תגובות <span>{post.comments?.length || 0}</span></h4>
+        {post.comments?.length ? <ul>{post.comments.map(comment => <li key={comment._id}><strong>{comment.author}</strong><span>{comment.content}</span><small>{new Date(comment.createdAt).toLocaleDateString('he-IL')}</small></li>)}</ul> : <p className="blog-no-comments">עדיין אין תגובות לפוסט.</p>}
+        <div className="blog-comment-compose"><input aria-label="תוכן התגובה" maxLength="2000" placeholder={nickname ? `תגובה בשם ${nickname}` : 'בחרו כינוי לפני כתיבת תגובה'} value={commentDraft.content} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { content: event.target.value } }))} /><button className="update-replies" onClick={() => addBlogComment(post)}>הוספת תגובה · 2 נקודות</button></div>
+      </div>
+    </article>;
+  };
+
   const reactToBlogPost = async (post, reaction) => {
     if (pendingBlogReactions[post._id]) return;
-    const current = blogReactions[post._id] || null;
+    const current = post.myReaction || null;
     const next = current === reaction ? null : reaction;
-    const likesDelta = Number(next === 'like') - Number(current === 'like');
-    const dislikesDelta = Number(next === 'dislike') - Number(current === 'dislike');
-    if (!likesDelta && !dislikesDelta) return;
+    if (current === next) return;
     setPendingBlogReactions(previous => ({ ...previous, [post._id]: true }));
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/reactions`, { likesDelta, dislikesDelta });
+      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/reactions`, { reaction: next });
       setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
-      const updatedReactions = { ...blogReactions };
-      if (next) updatedReactions[post._id] = next;
-      else delete updatedReactions[post._id];
-      localStorage.setItem('comment-tracker-blog-reactions', JSON.stringify(updatedReactions));
-      setBlogReactions(updatedReactions);
     } catch (err) {
       console.error('Update blog reaction error:', err.response?.data || err.message);
       alert('עדכון הלייק או הדיסלייק נכשל.');
@@ -327,11 +429,13 @@ function App() {
   const pointsFromSavedComments = convos.length;
   const pointsFromCommentLikes = totalCommentLikes * 2;
   const pointsFromCommentDislikes = totalCommentDislikes * -2;
-  const blogCommentsCount = blogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
-  const pointsFromBlogPosts = blogPosts.length * 5;
+  const myBlogPosts = currentUser ? blogPosts.filter(post => String(post.ownerId || '') === currentUser.id) : [];
+  const communityBlogPosts = [...blogPosts].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+  const blogCommentsCount = myBlogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
+  const pointsFromBlogPosts = myBlogPosts.length * 5;
   const pointsFromBlogComments = blogCommentsCount * 2;
-  const totalBlogLikes = blogPosts.reduce((total, post) => total + (post.likesCount || 0), 0);
-  const totalBlogDislikes = blogPosts.reduce((total, post) => total + (post.dislikesCount || 0), 0);
+  const totalBlogLikes = myBlogPosts.reduce((total, post) => total + (post.likesCount || 0), 0);
+  const totalBlogDislikes = myBlogPosts.reduce((total, post) => total + (post.dislikesCount || 0), 0);
   const pointsFromBlogLikes = totalBlogLikes * 2;
   const pointsFromBlogDislikes = totalBlogDislikes * -2;
   const rawPoints = pointsFromSavedComments + pointsFromCommentLikes + pointsFromCommentDislikes
@@ -360,6 +464,37 @@ function App() {
   const totalDislikes = statisticsConvos.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
   const statisticsReplies = statisticsConvos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
 
+  if (!authReady) {
+    return <div className="auth-loading" dir="rtl">טוען את החשבון שלך…</div>;
+  }
+
+  if (!currentUser) {
+    const registering = authMode === 'register';
+    return <main className="auth-page" dir="rtl">
+      <section className="auth-card">
+        <span className="section-kicker">COMMENT TRACKER</span>
+        <h1>{authStatus.needsInitialOwner ? 'פתיחת החשבון הראשון' : registering ? 'יצירת חשבון' : 'ברוך שובך'}</h1>
+        <p>{authStatus.needsInitialOwner
+          ? 'החשבון הראשון יקבל את התגובות והסטטיסטיקות הישנות ששמרת.'
+          : 'התחברו כדי לראות את התגובות וההתקדמות שלכם מכל מכשיר.'}</p>
+        {authStatus.needsInitialOwner && !authStatus.setupCodeConfigured && <div className="auth-setup-help">לפני יצירת החשבון הראשון, הוסיפו ל־Environment של שרת ה־backend ב־Render את המשתנה INITIAL_OWNER_SETUP_KEY. הקוד שתבחרו ישמש פעם אחת לשיוך הנתונים הקיימים לחשבונכם.</div>}
+        <form className="auth-form" onSubmit={submitAuth}>
+          {registering && <label>כינוי שיוצג באתר<input required maxLength="80" autoComplete="nickname" value={authDraft.displayName} onChange={event => setAuthDraft(previous => ({ ...previous, displayName: event.target.value }))} /></label>}
+          <label>אימייל<input required type="email" maxLength="254" autoComplete="email" dir="ltr" value={authDraft.email} onChange={event => setAuthDraft(previous => ({ ...previous, email: event.target.value }))} /></label>
+          <label>סיסמה<input required type="password" minLength="8" maxLength="128" autoComplete={registering ? 'new-password' : 'current-password'} value={authDraft.password} onChange={event => setAuthDraft(previous => ({ ...previous, password: event.target.value }))} /></label>
+          {registering && <label>אימות סיסמה<input required type="password" minLength="8" maxLength="128" autoComplete="new-password" value={authDraft.passwordConfirm} onChange={event => setAuthDraft(previous => ({ ...previous, passwordConfirm: event.target.value }))} /></label>}
+          {registering && authStatus.needsInitialOwner && authStatus.setupCodeConfigured && <label>קוד שיוך חד־פעמי<input required type="password" autoComplete="off" value={authDraft.setupCode} onChange={event => setAuthDraft(previous => ({ ...previous, setupCode: event.target.value }))} /></label>}
+          {authError && <p className="auth-error" role="alert">{authError}</p>}
+          {registering && <small className="auth-note">לא נשלח אימות אימייל בשלב זה; נבדוק רק שכתובת האימייל בפורמט תקין. בחרו סיסמה באורך 8 תווים לפחות.</small>}
+          <button className="primary-button" type="submit">{registering ? 'יצירת חשבון' : 'התחברות'}</button>
+        </form>
+        {!authStatus.needsInitialOwner && <button className="auth-mode-toggle" onClick={() => { setAuthError(''); setAuthMode(registering ? 'login' : 'register'); }}>
+          {registering ? 'כבר יש לך חשבון? התחברות' : 'משתמש חדש? יצירת חשבון'}
+        </button>}
+      </section>
+    </main>;
+  }
+
   return (
     <div className={`app theme-${theme}`} dir="rtl">
       <header className="hero" id="home">
@@ -380,7 +515,7 @@ function App() {
         <div className="nickname-area">
           {isEditingNickname ? (
             <div className="nickname-editor">
-              <input autoFocus value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => event.key === 'Enter' && saveNickname()} placeholder="הקלידו כינוי" aria-label="כינוי" />
+              <input autoFocus maxLength="80" value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => event.key === 'Enter' && saveNickname()} placeholder="הקלידו כינוי" aria-label="כינוי" />
               <button onClick={saveNickname}>שמור</button>
             </div>
           ) : (
@@ -403,7 +538,7 @@ function App() {
           <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
         </button>
         <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a href="#home" onClick={() => setIsMobileNavOpen(false)}>ראשי</a><a href="#comments" onClick={() => setIsMobileNavOpen(false)}>התגובות שלי</a><a href="#statistics" onClick={() => setIsMobileNavOpen(false)}>הסטטיסטיקות שלי</a><a href="#progress" onClick={() => setIsMobileNavOpen(false)}>ההתקדמות שלי</a><a href="#blog" onClick={() => setIsMobileNavOpen(false)}>הבלוג שלי</a>
+          <a href="#home" onClick={() => setIsMobileNavOpen(false)}>ראשי</a><a href="#comments" onClick={() => setIsMobileNavOpen(false)}>התגובות שלי</a><a href="#statistics" onClick={() => setIsMobileNavOpen(false)}>הסטטיסטיקות שלי</a><a href="#progress" onClick={() => setIsMobileNavOpen(false)}>ההתקדמות שלי</a><a href="#blog" onClick={() => setIsMobileNavOpen(false)}>הבלוג שלי</a><a href="#community-blog" onClick={() => setIsMobileNavOpen(false)}>בלוג המגיבים</a>
         </div>
       </nav>
 
@@ -444,16 +579,18 @@ function App() {
           <h3>פעילות הבלוג</h3>
           <p>הנתונים מתעדכנים אוטומטית לפי הפוסטים והתגובות בבלוג.</p>
           <div className="blog-activity-grid">
-            <div className="blog-count"><span>פוסטים שפורסמו</span><strong>{blogPosts.length}</strong></div>
+            <div className="blog-count"><span>פוסטים שפורסמו</span><strong>{myBlogPosts.length}</strong></div>
             <div className="blog-count"><span>תגובות שהתקבלו</span><strong>{blogCommentsCount}</strong></div>
             <div className="blog-count"><span>לייקים לפוסטים</span><strong>{totalBlogLikes}</strong></div>
             <div className="blog-count"><span>דיסלייקים לפוסטים</span><strong>{totalBlogDislikes}</strong></div>
           </div>
+          <button className="sign-out-button" onClick={signOut}>יציאה מהחשבון</button>
         </div>
       </section>
 
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
-        <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{blogPosts.length} פוסטים</span></div>
+        <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span></div>
+        {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
         <form className="blog-compose" onSubmit={createBlogPost}>
           <label>כותרת הפוסט<input maxLength="160" required value={blogDraft.title} onChange={event => setBlogDraft(previous => ({ ...previous, title: event.target.value }))} placeholder="על מה בא לך לכתוב?" /></label>
           <label>תוכן הפוסט<textarea maxLength="10000" required value={blogDraft.content} onChange={event => setBlogDraft(previous => ({ ...previous, content: event.target.value }))} placeholder="שתף מחשבות, רעיונות או סיפור..." /></label>
@@ -463,22 +600,13 @@ function App() {
             <button className="blog-cancel-button" type="button" onClick={cancelBlogDraft}>ביטול</button>
           </div>
         </form>
-        {blogPosts.length ? <div className="blog-post-list">{blogPosts.map(post => {
-          const commentDraft = blogCommentDrafts[post._id] || { author: '', content: '' };
-          return <article className="blog-post" key={post._id}>
-            <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>
-            <p className="blog-post-content">{post.content}</p>
-            {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
-            <div className="blog-post-reactions" aria-label="תגובות לפוסט">
-              <button className={`blog-reaction-button ${blogReactions[post._id] === 'like' ? 'selected' : ''}`} aria-pressed={blogReactions[post._id] === 'like'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'like')}>👍 לייק <span>{post.likesCount || 0}</span></button>
-              <button className={`blog-reaction-button ${blogReactions[post._id] === 'dislike' ? 'selected' : ''}`} aria-pressed={blogReactions[post._id] === 'dislike'} disabled={pendingBlogReactions[post._id]} onClick={() => reactToBlogPost(post, 'dislike')}>👎 דיסלייק <span>{post.dislikesCount || 0}</span></button>
-            </div>
-            <div className="blog-comments"><h4>תגובות <span>{post.comments?.length || 0}</span></h4>
-              {post.comments?.length ? <ul>{post.comments.map(comment => <li key={comment._id}><strong>{comment.author}</strong><span>{comment.content}</span><small>{new Date(comment.createdAt).toLocaleDateString('he-IL')}</small></li>)}</ul> : <p className="blog-no-comments">עדיין אין תגובות לפוסט.</p>}
-              <div className="blog-comment-compose"><input aria-label="שם המגיב" maxLength="80" placeholder="שם המגיב" value={commentDraft.author} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { ...commentDraft, author: event.target.value } }))} /><input aria-label="תוכן התגובה" maxLength="2000" placeholder="כתיבת תגובה" value={commentDraft.content} onChange={event => setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { ...commentDraft, content: event.target.value } }))} /><button className="update-replies" onClick={() => addBlogComment(post)}>הוספת תגובה · 2 נקודות</button></div>
-            </div>
-          </article>;
-        })}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>הפוסט הראשון שלך מתחיל כאן</h3><p>שתף משהו שחשוב לך — כל פוסט שתפרסם יוסיף 5 נקודות להתקדמות שלך.</p></div>}
+        {myBlogPosts.length ? <div className="blog-post-list">{myBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.</p></div>}
+      </section>
+
+      <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
+        <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span></div>
+        <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
+        {communityBlogPosts.length ? <div className="blog-post-list">{communityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>הבלוג הקהילתי עוד ריק</h3><p>פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.</p></div>}
       </section>
 
       <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`} id="comments">

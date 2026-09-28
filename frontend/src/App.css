@@ -119,6 +119,21 @@ h1, h2, h3, p { margin-top: 0; }
 .user-badge.super { border-color: #e5a879; background: #fff1e8; }
 .user-badge.super .badge-art { background: #d46b35; }
 .user-badge.super .badge-copy strong { color: #a64b20; }
+.sign-out-button { margin-top: 8px; padding: 5px 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 11px; font-weight: 700; }
+.sign-out-button:hover { color: #b25d4e; border-color: #e9b4aa; background: #fff0ed; }
+.auth-page { display: grid; min-height: 100vh; place-items: center; padding: 28px 16px; background: var(--cream); }
+.auth-card { width: min(100%, 440px); padding: 32px; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: 0 18px 50px rgba(31,49,56,.1); }
+.auth-card h1 { margin: 5px 0 8px; font-size: 28px; }
+.auth-card > p { margin: 0 0 20px; color: var(--muted); line-height: 1.6; }
+.auth-form { display: grid; gap: 13px; }
+.auth-form label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.auth-form .primary-button { width: 100%; margin-top: 3px; }
+.auth-note { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.auth-setup-help { margin: -5px 0 16px; padding: 12px 14px; color: #765f16; border: 1px solid #eadb9b; border-radius: 12px; background: #fff9df; font-size: 12px; line-height: 1.6; }
+.auth-error { margin: 0; padding: 10px 12px; color: #a33f32; border: 1px solid #ecc3bc; border-radius: 10px; background: #fff0ed; font-size: 13px; }
+.auth-mode-toggle { display: block; margin: 17px auto 0; padding: 7px 10px; color: var(--mint-strong); border: 0; background: transparent; font-weight: 700; }
+.auth-mode-toggle:hover { text-decoration: underline; }
+.auth-loading { display: grid; min-height: 100vh; place-items: center; color: var(--muted); background: var(--cream); font-family: 'Heebo', sans-serif; }
 
 .card, .conversation, .empty-state {
   border: 1px solid rgba(227, 232, 235, .9);
@@ -284,6 +299,8 @@ textarea { min-height: 96px; resize: vertical; }
 .blog-post { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .blog-post-heading { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
 .blog-post-heading h3 { margin: 0 0 4px; font-size: 19px; }
+.blog-post-author { margin-bottom: 3px; color: var(--mint-strong); font-size: 12px; font-weight: 700; }
+.blog-author-note { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .blog-post-content { margin: 16px 0; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
 .blog-source-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; margin: 0 0 16px; padding: 8px 11px; color: var(--mint-strong); border: 1px solid #bfe8d2; border-radius: 10px; background: var(--page-bg); font-size: 13px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
 .blog-source-link:hover { border-color: var(--mint-strong); background: var(--mint); }
