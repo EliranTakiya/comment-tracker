@@ -576,7 +576,7 @@ function App() {
           <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
         </button>
         <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a>
+          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
         </div>
       </nav>
 
@@ -622,7 +622,6 @@ function App() {
             <div className="blog-count"><span>לייקים לפוסטים</span><strong>{totalBlogLikes}</strong></div>
             <div className="blog-count"><span>דיסלייקים לפוסטים</span><strong>{totalBlogDislikes}</strong></div>
           </div>
-          <button className="sign-out-button" onClick={signOut}>יציאה מהחשבון</button>
         </div>
       </section>
 
@@ -651,6 +650,32 @@ function App() {
         <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span></div>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
         {communityBlogPosts.length ? <div className="blog-post-list">{communityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>הבלוג הקהילתי עוד ריק</h3><p>פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.</p></div>}
+      </section>
+
+      <section className="settings-section" id="settings" aria-labelledby="settings-title">
+        <div className="statistics-heading"><div><span className="section-kicker">החשבון שלך</span><h2 id="settings-title">הגדרות</h2></div></div>
+        <div className="settings-grid">
+          <article className="settings-card">
+            <div className="settings-card-heading"><span aria-hidden="true">👤</span><div><h3>פרטי החשבון</h3><p>הפרטים שמחוברים לחשבון שלך</p></div></div>
+            <label className="settings-field">כתובת אימייל<input type="email" value={currentUser.email} readOnly dir="ltr" /></label>
+            <form className="settings-profile-form" onSubmit={event => { event.preventDefault(); saveNickname(); }}>
+              <label className="settings-field">הכינוי שלך<input maxLength="80" required value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} placeholder="הקלידו כינוי" /></label>
+              <button className="primary-button" type="submit">שמירת כינוי</button>
+            </form>
+          </article>
+          <article className="settings-card">
+            <div className="settings-card-heading"><span aria-hidden="true">◐</span><div><h3>מראה האתר</h3><p>בחר/י את ערכת הנושא שלך</p></div></div>
+            <div className="settings-theme-options" role="group" aria-label="בחירת ערכת נושא">
+              {themes.map(option => <button type="button" key={option.value} className={`settings-theme-option ${theme === option.value ? 'selected' : ''}`} aria-pressed={theme === option.value} onClick={() => changeTheme(option.value)}>
+                <span className="settings-theme-swatch" style={{ background: option.swatch }} aria-hidden="true" />{option.label}{theme === option.value && <span className="settings-theme-check" aria-hidden="true">✓</span>}
+              </button>)}
+            </div>
+          </article>
+          <article className="settings-card settings-account-card">
+            <div className="settings-card-heading"><span aria-hidden="true">↗</span><div><h3>ניהול החשבון</h3><p>יציאה מהמכשיר הזה</p></div></div>
+            <button className="settings-sign-out" onClick={signOut}>יציאה מהחשבון</button>
+          </article>
+        </div>
       </section>
 
       <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`} id="comments">
