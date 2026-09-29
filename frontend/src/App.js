@@ -238,6 +238,23 @@ function App() {
     setConvos(res.data);
   };
 
+  const syncBlogSourceMetrics = (changedConversation, removed = false) => {
+    const changedId = String(changedConversation._id);
+    setBlogPosts(previous => previous.map(post => {
+      const sourceIds = (post.sourceConversationIds || []).map(String);
+      if (!sourceIds.includes(changedId)) return post;
+      const sourceConversations = sourceIds.map(id => {
+        if (id === changedId) return removed ? null : changedConversation;
+        return convos.find(conversation => String(conversation._id) === id) || null;
+      }).filter(Boolean);
+      return {
+        ...post,
+        sourceLikesCount: sourceConversations.reduce((total, conversation) => total + (conversation.likesCount || 0), 0),
+        sourceDislikesCount: sourceConversations.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0),
+      };
+    }));
+  };
+
   const loadBlogPosts = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/blog-posts`);
@@ -294,7 +311,7 @@ function App() {
     try {
       const postData = { author, title, content, sourceTitle, sourceUrl };
       const response = editingBlogPostId
-        ? await axios.put(`${API_BASE_URL}/api/blog-posts/${editingBlogPostId}`, postData)
+        ? await axios.put(`${API_BASE_URL}/api/blog-posts/${editingBlogPostId}`, blogDraftSourceConversationIds.length ? { ...postData, sourceConversationIds: blogDraftSourceConversationIds } : postData)
         : await axios.post(`${API_BASE_URL}/api/blog-posts`, { ...postData, sourceConversationIds: blogDraftSourceConversationIds });
       if (editingBlogPostId) {
         setBlogPosts(previous => previous.map(post => post._id === editingBlogPostId ? response.data : post));
@@ -325,7 +342,7 @@ function App() {
   const startBlogPostEdit = (post) => {
     setEditingBlogPostId(post._id);
     setBlogDraft({ title: post.title || '', content: post.content || '', sourceTitle: post.sourceTitle || '', sourceUrl: post.sourceUrl || '' });
-    setBlogDraftSourceConversationIds([]);
+    setBlogDraftSourceConversationIds((post.sourceConversationIds || []).map(String));
     setIsBlogFormOpen(true);
     document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -492,6 +509,7 @@ function App() {
     try {
       await axios.delete(`${API_BASE_URL}/api/conversations/${conversation._id}`);
       setConvos(previous => previous.filter(item => item._id !== conversation._id));
+      syncBlogSourceMetrics(conversation, true);
       showSuccess('התגובה השמורה נמחקה');
     } catch (err) {
       console.error('Delete error:', err.response?.data || err.message);
@@ -537,6 +555,7 @@ function App() {
     try {
       const response = await axios.put(`${API_BASE_URL}/api/conversations/${conversation._id}/reactions`, { likesCount, dislikesCount });
       setConvos(previous => previous.map(item => item._id === conversation._id ? response.data : item));
+      syncBlogSourceMetrics(response.data);
       setEditingReactionsId(null);
       showSuccess('הלייקים והדיסלייקים עודכנו');
     } catch (err) {

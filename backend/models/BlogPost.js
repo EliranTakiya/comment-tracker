@@ -19,6 +19,7 @@ const BlogPostSchema = new mongoose.Schema({
     maxlength: 2048,
     validate: { validator: value => !value || /^https?:\/\/\S+$/i.test(value), message: 'Source URL must use http or https' },
   },
+  sourceConversationIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' }],
   likesCount: { type: Number, default: 0, min: 0 },
   dislikesCount: { type: Number, default: 0, min: 0 },
   sourceLikesCount: { type: Number, default: 0, min: 0 },
