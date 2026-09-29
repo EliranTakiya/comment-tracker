@@ -3,6 +3,9 @@ import axios from 'axios';
 import './App.css';
 
 axios.defaults.withCredentials = true;
+const API_BASE_URL = process.env.NODE_ENV === 'development'
+  ? (process.env.REACT_APP_BACKEND_URL || '')
+  : '';
 
 const TOPICS = ['חדשות כללי', 'ספורט', 'כלכלה', 'פוליטיקה', 'אופנה', 'סלבס'];
 const DATE_FILTERS = [
@@ -68,12 +71,12 @@ function App() {
     let active = true;
     const initializeAuth = async () => {
       try {
-        const status = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/auth/status`);
+        const status = await axios.get(`${API_BASE_URL}/api/auth/status`);
         if (!active) return;
         setAuthStatus(status.data);
         if (status.data.needsInitialOwner) setAuthMode('register');
         try {
-          const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/auth/me`);
+          const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
           if (active) setCurrentUser(response.data.user);
         } catch (err) {
           if (err.response?.status !== 401) setAuthError('לא הצלחנו להתחבר לשרת. נסו לרענן את העמוד.');
@@ -108,7 +111,7 @@ function App() {
       ? { email: authDraft.email, password: authDraft.password, displayName: authDraft.displayName, setupCode: authDraft.setupCode }
       : { email: authDraft.email, password: authDraft.password };
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/${endpoint}`, payload);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/${endpoint}`, payload);
       setCurrentUser(response.data.user);
       if (isRegister) setAuthStatus(previous => ({ ...previous, needsInitialOwner: false }));
       setAuthError('');
@@ -118,7 +121,7 @@ function App() {
   };
 
   const signOut = async () => {
-    try { await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/auth/logout`); }
+    try { await axios.post(`${API_BASE_URL}/api/auth/logout`); }
     catch (err) { console.error('Sign out error:', err.response?.data || err.message); }
     setCurrentUser(null);
     setConvos([]);
@@ -132,7 +135,7 @@ function App() {
   const changeTheme = async (nextTheme) => {
     setShowThemeMenu(false);
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, { theme: nextTheme });
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { theme: nextTheme });
       setCurrentUser(response.data.user);
     } catch (err) {
       console.error('Save theme error:', err.response?.data || err.message);
@@ -149,7 +152,7 @@ function App() {
     const nextNickname = nicknameDraft.trim();
     if (!nextNickname) return;
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/auth/profile`, { displayName: nextNickname });
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { displayName: nextNickname });
       setCurrentUser(response.data.user);
       setNickname(response.data.user.displayName);
       setIsEditingNickname(false);
@@ -160,13 +163,13 @@ function App() {
   };
 
   const load = async () => {
-    const res = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/conversations`);
+    const res = await axios.get(`${API_BASE_URL}/api/conversations`);
     setConvos(res.data);
   };
 
   const loadBlogPosts = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`);
+      const response = await axios.get(`${API_BASE_URL}/api/blog-posts`);
       setBlogPosts(response.data);
     } catch (err) {
       console.error('Load blog posts error:', err.response?.data || err.message);
@@ -192,7 +195,7 @@ function App() {
     }
     if (!title || !content) return;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts`, {
+      const response = await axios.post(`${API_BASE_URL}/api/blog-posts`, {
         author, title, content, sourceTitle, sourceUrl,
         sourceConversationIds: blogDraftSourceConversationIds,
       });
@@ -216,7 +219,7 @@ function App() {
   const deleteBlogPost = async (post) => {
     if (!window.confirm('למחוק את הפוסט ואת התגובות שלו?')) return;
     try {
-      await axios.delete(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}`);
+      await axios.delete(`${API_BASE_URL}/api/blog-posts/${post._id}`);
       setBlogPosts(previous => previous.filter(item => item._id !== post._id));
     } catch (err) {
       console.error('Delete blog post error:', err.response?.data || err.message);
@@ -234,7 +237,7 @@ function App() {
     }
     if (!author || !content) return;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/comments`, { author, content });
+      const response = await axios.post(`${API_BASE_URL}/api/blog-posts/${post._id}/comments`, { author, content });
       setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
       setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { author: '', content: '' } }));
     } catch (err) {
@@ -292,7 +295,7 @@ function App() {
     if (current === next) return;
     setPendingBlogReactions(previous => ({ ...previous, [post._id]: true }));
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/blog-posts/${post._id}/reactions`, { reaction: next });
+      const response = await axios.put(`${API_BASE_URL}/api/blog-posts/${post._id}/reactions`, { reaction: next });
       setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
     } catch (err) {
       console.error('Update blog reaction error:', err.response?.data || err.message);
@@ -328,13 +331,13 @@ function App() {
     }
     try {
       if (editingConversationId) {
-        const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/conversations/${editingConversationId}`, form);
+        const response = await axios.put(`${API_BASE_URL}/api/conversations/${editingConversationId}`, form);
         setConvos(previous => previous.map(item => item._id === editingConversationId ? response.data : item));
         setEditingConversationId(null);
         setForm(emptyForm);
         setIsFormOpen(false);
       } else {
-        await axios.post(`${process.env.REACT_APP_BACKEND_URL}/api/conversations`, form);
+        await axios.post(`${API_BASE_URL}/api/conversations`, form);
         setForm(emptyForm);
         load();
       }
@@ -361,7 +364,7 @@ function App() {
   const deleteComment = async (conversation) => {
     if (!window.confirm('למחוק את התגובה השמורה?')) return;
     try {
-      await axios.delete(`${process.env.REACT_APP_BACKEND_URL}/api/conversations/${conversation._id}`);
+      await axios.delete(`${API_BASE_URL}/api/conversations/${conversation._id}`);
       setConvos(previous => previous.filter(item => item._id !== conversation._id));
     } catch (err) {
       console.error('Delete error:', err.response?.data || err.message);
@@ -381,7 +384,7 @@ function App() {
       return;
     }
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/conversations/${conversation._id}/replies`, { repliesCount });
+      const response = await axios.put(`${API_BASE_URL}/api/conversations/${conversation._id}/replies`, { repliesCount });
       setConvos(previous => previous.map(item => item._id === conversation._id ? response.data : item));
       setEditingRepliesId(null);
       setRepliesDraft('');
@@ -404,7 +407,7 @@ function App() {
       return;
     }
     try {
-      const response = await axios.put(`${process.env.REACT_APP_BACKEND_URL}/api/conversations/${conversation._id}/reactions`, { likesCount, dislikesCount });
+      const response = await axios.put(`${API_BASE_URL}/api/conversations/${conversation._id}/reactions`, { likesCount, dislikesCount });
       setConvos(previous => previous.map(item => item._id === conversation._id ? response.data : item));
       setEditingReactionsId(null);
     } catch (err) {
