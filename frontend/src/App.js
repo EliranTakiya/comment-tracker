@@ -263,10 +263,10 @@ function App() {
       <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{showDelete && String(post.ownerId || '') === currentUser.id && <button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button>}</div>
       <p className="blog-post-content">{post.content}</p>
       {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
-      {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-original-metrics" aria-label="נתוני התגובה המקורית, לקריאה בלבד">
-        <div className="blog-original-metrics-copy"><span className="blog-original-mark">↗</span><div><strong>נתוני התגובה המקורית</strong><small>הועברו מהתגובה השמורה</small></div></div>
-        <div className="blog-original-metric like"><span aria-hidden="true">👍</span><strong>{post.sourceLikesCount || 0}</strong><small>לייקים</small></div>
-        <div className="blog-original-metric dislike"><span aria-hidden="true">👎</span><strong>{post.sourceDislikesCount || 0}</strong><small>דיסלייקים</small></div>
+      {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-original-metrics" aria-label="לייקים ודיסלייקים של התגובה המקורית, לתצוגה בלבד">
+        <span className="blog-original-caption">לתגובה המקורית</span>
+        <span className="blog-original-metric like"><span aria-hidden="true">👍</span>{post.sourceLikesCount || 0}</span>
+        <span className="blog-original-metric dislike"><span aria-hidden="true">👎</span>{post.sourceDislikesCount || 0}</span>
       </div>}
       <section className="blog-vote-panel" aria-label="דירוג הפוסט">
         <div className="blog-vote-heading"><span>דירוג הקהילה</span><strong>מה דעתך על הפוסט?</strong><small>ההצבעה לפוסט נספרת בנפרד מנתוני התגובה המקורית.</small></div>
