@@ -52,15 +52,49 @@ router.get('/', async (req, res) => {
 router.get('/authors/:id', async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });
-    const user = await User.findById(req.params.id).select('displayName').lean();
+    const user = await User.findById(req.params.id).select('displayName createdAt').lean();
     if (!user) return res.status(404).json({ message: 'Author not found' });
-    const posts = await BlogPost.find({ ownerId: user._id })
+    const [posts, conversationTotals] = await Promise.all([
+      BlogPost.find({ ownerId: user._id })
       .select('ownerId author title content sourceTitle sourceUrl sourceLikesCount sourceDislikesCount likesCount dislikesCount comments createdAt')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }),
+      Conversation.aggregate([
+        { $match: { userId: user._id } },
+        { $group: {
+          _id: null,
+          count: { $sum: 1 },
+          likesCount: { $sum: '$likesCount' },
+          dislikesCount: { $sum: '$dislikesCount' },
+        } },
+      ]),
+    ]);
+    const postsWithReactions = await attachReactionData(posts, req.user._id);
+    const conversations = conversationTotals[0] || { count: 0, likesCount: 0, dislikesCount: 0 };
+    const blogPoints = postsWithReactions.reduce((total, post) => total
+      + (post.comments?.length || 0) * 2
+      + (post.likesCount || 0) * 2
+      - (post.dislikesCount || 0) * 2, postsWithReactions.length * 5);
+    const totalPoints = Math.max(0,
+      conversations.count
+      + (conversations.likesCount || 0) * 2
+      - (conversations.dislikesCount || 0) * 2
+      + blogPoints
+    );
+    const badgeThresholds = [0, 20, 60, 150, 300];
+    const badges = [
+      { name: 'מתחיל', icon: '○', className: 'beginner' },
+      { name: 'מגיב פעיל', icon: '✦', className: 'active' },
+      { name: 'טוקבקיסט', icon: '◆', className: 'commenter' },
+      { name: 'טוקבקיסט ותיק', icon: '★', className: 'veteran' },
+      { name: 'טוקבקיסט על', icon: '✹', className: 'super' },
+    ];
+    const badgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
     res.json({
       id: user._id.toString(),
       displayName: user.displayName,
-      posts: await attachReactionData(posts, req.user._id),
+      joinedAt: user.createdAt,
+      rank: badges[badgeIndex],
+      posts: postsWithReactions,
     });
   } catch (err) {
     console.error(err);

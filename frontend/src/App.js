@@ -554,7 +554,29 @@ function App() {
   const statisticsReplies = statisticsConvos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
 
   if (!authReady) {
-    return <div className="auth-loading" dir="rtl">טוען את החשבון שלך…</div>;
+    return <main className="splash-screen" dir="rtl" role="status" aria-live="polite" aria-busy="true">
+      <span className="splash-orb splash-orb-one" aria-hidden="true" />
+      <span className="splash-orb splash-orb-two" aria-hidden="true" />
+      <div className="splash-content">
+        <div className="splash-brand">
+          <span className="splash-logo" aria-hidden="true">CT</span>
+          <div><span className="splash-eyebrow">המילים שלך, במקום אחד</span><h1>Comment <strong>Tracker</strong></h1></div>
+        </div>
+        <div className="splash-scene" aria-hidden="true">
+          <span className="splash-sparkle sparkle-one">✦</span><span className="splash-sparkle sparkle-two">✦</span>
+          <div className="splash-float-bubble bubble-like">♥ <strong>12</strong></div>
+          <div className="splash-float-bubble bubble-reply">תגובה חדשה <span>↙</span></div>
+          <div className="splash-note-card">
+            <div className="splash-note-top"><span className="splash-note-avatar">א</span><span><i /><i /></span><b>•••</b></div>
+            <div className="splash-note-lines"><i /><i /><i /></div>
+            <div className="splash-note-bottom"><span>♥ אהבתי</span><span>↩ תגובה</span></div>
+          </div>
+        </div>
+        <div className="splash-loading-copy"><span className="splash-loader-dots" aria-hidden="true"><i /><i /><i /></span><p>טוען את החשבון שלך</p></div>
+        <div className="splash-progress-track" aria-hidden="true"><span /></div>
+        <span className="splash-footer">שומרים את כל השיחות החשובות קרוב</span>
+      </div>
+    </main>;
   }
 
   if (!currentUser) {
@@ -837,7 +859,10 @@ function App() {
         <section className="public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title">
           <div className="public-profile-heading">
             <div className="public-profile-avatar" aria-hidden="true">{publicProfile?.displayName?.slice(0, 1) || '✦'}</div>
-            <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{publicProfile && <small>{publicProfile.posts.length} פוסטים שפורסמו</small>}</div>
+            <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{publicProfile && <><small>{publicProfile.posts.length} פוסטים שפורסמו</small><div className="public-profile-meta">
+              {publicProfile.rank && <span className={`user-badge public-profile-rank ${publicProfile.rank.className}`}><span className="badge-art" aria-hidden="true">{publicProfile.rank.icon}</span><span className="badge-copy"><strong>{publicProfile.rank.name}</strong><small>דרגת המגיב</small></span></span>}
+              {publicProfile.joinedAt && <span className="public-profile-tenure">מגיב באתר מתאריך {new Date(publicProfile.joinedAt).toLocaleDateString('he-IL')}</span>}
+            </div></>}</div>
             <button className="profile-modal-close" type="button" aria-label="סגירת הפרופיל" onClick={() => setIsPublicProfileOpen(false)}>×</button>
           </div>
           {publicProfileError && <p className="public-profile-message error">{publicProfileError}</p>}
