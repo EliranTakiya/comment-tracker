@@ -62,12 +62,13 @@ button { cursor: pointer; }
 }
 
 .brand-mark {
+  position: relative;
   display: grid;
   flex: 0 0 58px;
   height: 58px;
   place-items: center;
   padding: 0;
-  border-radius: 18px;
+  border-radius: 18px 18px 18px 7px;
   border: 0;
   color: #fff;
   background: var(--ink);
@@ -75,6 +76,7 @@ button { cursor: pointer; }
   appearance: none;
   transform: rotate(-5deg);
 }
+.brand-mark::after { position: absolute; bottom: -4px; left: 8px; width: 13px; height: 13px; border-radius: 0 0 0 3px; background: inherit; content: ''; transform: rotate(45deg); }
 .theme-picker { position: relative; flex: 0 0 58px; width: 58px; }
 .theme-menu { position: absolute; z-index: 5; top: 70px; right: 0; width: 175px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 14px 30px rgba(20, 35, 38, .18); }
 .theme-menu strong { display: block; margin: 3px 7px 7px; color: var(--muted); font-size: 12px; }
@@ -145,7 +147,8 @@ h1, h2, h3, p { margin-top: 0; }
 .splash-orb-two { right: -150px; bottom: -125px; width: 330px; border-color: rgba(255, 190, 151, .14); box-shadow: 0 0 80px rgba(255, 151, 115, .08), inset 0 0 65px rgba(255, 151, 115, .04); }
 .splash-content { display: grid; width: min(100%, 440px); justify-items: center; }
 .splash-brand { display: flex; align-items: center; gap: 15px; }
-.splash-logo { display: grid; width: 66px; height: 66px; flex: 0 0 66px; place-items: center; color: #18342d; border: 1px solid rgba(255,255,255,.72); border-radius: 21px; background: linear-gradient(145deg, #cbf3dc 8%, #9cdec0 52%, #ffc4a8 100%); box-shadow: 0 13px 35px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.9); font: 800 21px 'Space Grotesk', sans-serif; transform: rotate(-7deg); }
+.splash-logo { position: relative; display: grid; width: 66px; height: 66px; flex: 0 0 66px; place-items: center; color: #18342d; border: 1px solid rgba(255,255,255,.72); border-radius: 21px 21px 21px 8px; background: linear-gradient(145deg, #cbf3dc 8%, #9cdec0 52%, #ffc4a8 100%); box-shadow: 0 13px 35px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.9); font: 800 21px 'Space Grotesk', sans-serif; transform: rotate(-7deg); }
+.splash-logo::after { position: absolute; bottom: -5px; left: 10px; width: 15px; height: 15px; border-radius: 0 0 0 3px; background: #a9e4c8; content: ''; transform: rotate(45deg); }
 .splash-eyebrow { display: block; margin-bottom: 2px; color: #b3dcc8; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 .splash-brand h1 { margin: 0; color: #f6fbf8; direction: ltr; font: 600 clamp(27px, 7vw, 37px) 'Space Grotesk', sans-serif; letter-spacing: -.06em; white-space: nowrap; }
 .splash-brand h1 strong { color: #aee5c6; font-weight: 700; }
@@ -187,7 +190,7 @@ h1, h2, h3, p { margin-top: 0; }
 @keyframes sparkle { 0%, 100% { opacity: .42; scale: .8; } 50% { opacity: 1; scale: 1.15; } }
 @keyframes loading-dot { 0%, 60%, 100% { opacity: .45; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
 @keyframes loading-progress { 0% { transform: translateX(-180%); } 100% { transform: translateX(400%); } }
-@media (max-width: 480px) { .splash-logo { width: 58px; height: 58px; flex-basis: 58px; border-radius: 18px; } .splash-brand { gap: 12px; } .splash-scene { height: 205px; margin-top: 5px; } }
+@media (max-width: 480px) { .splash-logo { width: 58px; height: 58px; flex-basis: 58px; border-radius: 18px 18px 18px 7px; } .splash-brand { gap: 12px; } .splash-scene { height: 205px; margin-top: 5px; } }
 @media (prefers-reduced-motion: reduce) { .splash-screen::before, .splash-note-card, .splash-float-bubble, .splash-sparkle, .splash-loader-dots i, .splash-progress-track span { animation: none; } }
 
 .card, .conversation, .empty-state {
@@ -535,7 +538,7 @@ textarea { min-height: 96px; resize: vertical; }
   .app { padding: 22px 16px 50px; }
   .hero { align-items: flex-start; padding-bottom: 26px; }
   .theme-picker { flex-basis: 48px; width: 48px; }
-  .brand-mark { flex-basis: 48px; width: 48px; height: 48px; border-radius: 14px; font-size: 16px; }
+  .brand-mark { flex-basis: 48px; width: 48px; height: 48px; border-radius: 14px 14px 14px 6px; font-size: 16px; }
   .hero h1 { font-size: 28px; }
   .hero-subtitle { font-size: 14px; }
   .hero-count { display: none; }
