@@ -234,7 +234,8 @@ textarea { min-height: 96px; resize: vertical; }
 .empty-state p { margin: 0; color: var(--muted); }
 .app-footer { margin-top: 58px; padding-top: 18px; color: var(--muted); border-top: 1px solid var(--line); text-align: center; font-size: 12px; letter-spacing: .2px; }
 
-.main-nav { position: sticky; top: 0; z-index: 8; display: flex; justify-content: space-between; gap: 4px; margin: 0 0 24px; padding: 8px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); box-shadow: 0 8px 24px rgba(31,49,56,.08); }
+.main-nav { position: sticky; top: 0; z-index: 8; display: flex; justify-content: space-between; gap: 4px; margin: 0 0 24px; padding: 8px; border: 1px solid #a9cfb8; border-radius: 15px; background: #cfe8d9; box-shadow: 0 8px 24px rgba(31,49,56,.12); }
+.app.theme-night .main-nav { border-color: #416c5d; background: #234139; }
 .main-nav-links { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 4px; }
 .main-nav a { padding: 9px 11px; color: var(--muted); border-radius: 9px; text-decoration: none; white-space: nowrap; font-size: 13px; font-weight: 700; }
 .main-nav a:hover, .main-nav a.active { color: var(--mint-strong); background: var(--mint); }
@@ -346,7 +347,8 @@ textarea { min-height: 96px; resize: vertical; }
 
 @media (max-width: 700px) {
   #comments, #statistics, #progress, #blog, #community-blog { scroll-margin-top: calc(82px + env(safe-area-inset-top)); }
-  .main-nav { position: sticky; top: max(8px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 0; margin: 0 0 20px; padding: 6px; overflow: visible; border-radius: 17px; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px); }
+  .main-nav { position: sticky; top: max(8px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 0; margin: 0 0 20px; padding: 6px; overflow: visible; border-radius: 17px; background: #cfe8d9; backdrop-filter: blur(14px); }
+  .app.theme-night .main-nav { background: #234139; }
   .mobile-nav-toggle { display: flex; width: 100%; min-height: 48px; align-items: center; gap: 11px; padding: 8px 12px; color: var(--ink); border: 0; border-radius: 12px; background: transparent; font-size: 14px; font-weight: 800; text-align: right; }
   .mobile-nav-toggle:hover, .mobile-nav-toggle[aria-expanded="true"] { color: var(--mint-strong); background: var(--mint); }
   .hamburger-icon { position: relative; display: block; flex: 0 0 21px; width: 21px; height: 18px; }
@@ -429,4 +431,5 @@ textarea { min-height: 96px; resize: vertical; }
   .page-title, .comment-quote { overflow-wrap: anywhere; }
   .reaction-tools { flex-wrap: wrap; gap: 8px; }
   .app-footer { margin-top: 42px; }
+  .app input, .app textarea, .app select, .auth-page input, .auth-page textarea, .auth-page select { font-size: 16px; }
 }
