@@ -681,8 +681,9 @@ function App() {
         <div className="nickname-area">
           {isEditingNickname ? (
             <div className="nickname-editor">
-              <input autoFocus maxLength="80" value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => event.key === 'Enter' && saveNickname()} placeholder="הקלידו כינוי" aria-label="כינוי" />
-              <button onClick={saveNickname}>שמור</button>
+              <input autoFocus maxLength="80" value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') saveNickname(); if (event.key === 'Escape') { setNicknameDraft(nickname); setIsEditingNickname(false); } }} placeholder="הקלידו כינוי" aria-label="כינוי" />
+              <button type="button" onClick={saveNickname}>שמור</button>
+              <button type="button" className="nickname-cancel-button" onClick={() => { setNicknameDraft(nickname); setIsEditingNickname(false); }}>ביטול</button>
             </div>
           ) : (
             <button className={`nickname-button ${nickname ? 'has-nickname' : ''}`} style={{ '--avatar-emoji': JSON.stringify(currentAvatar.emoji) }} onClick={nickname ? startNicknameEdit : () => { setNicknameDraft(''); setIsEditingNickname(true); }}>
