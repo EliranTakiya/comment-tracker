@@ -441,8 +441,10 @@ textarea { min-height: 96px; resize: vertical; }
 .blog-section .blog-compose .primary-button:hover,
 .blog-section .blog-comment-compose .primary-button:hover,
 .blog-section .edit-blog-button:hover { filter: brightness(.92); }
-.blog-section .blog-vote-option.like.selected { border-color: var(--section-accent); background: var(--section-tint); }
-.blog-section .blog-vote-option.like.selected .blog-vote-symbol { color: var(--section-accent); background: var(--surface); }
+.blog-section .blog-vote-option.like.selected { border-color: #83c7a2; background: #e5f6eb; }
+.blog-section .blog-vote-option.like.selected .blog-vote-symbol { color: #24845c; background: #fff; }
+.blog-section .blog-vote-option.dislike.selected { border-color: #dfaaa3; background: #fff0ed; }
+.blog-section .blog-vote-option.dislike.selected .blog-vote-symbol { color: #a65e55; background: #fff; }
 .settings-section .settings-profile-form .primary-button { background: var(--section-accent); }
 .settings-section .settings-profile-form .primary-button:hover { filter: brightness(.92); }
 .settings-section .settings-theme-option:hover,
