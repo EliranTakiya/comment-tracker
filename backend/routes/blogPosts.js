@@ -12,13 +12,16 @@ router.use(requireAuth);
 async function attachReactionData(posts, userId) {
   if (!posts.length) return [];
   const ids = posts.map(post => post._id);
-  const [counts, mine] = await Promise.all([
+  const ownerIds = [...new Set(posts.map(post => post.ownerId?.toString()).filter(Boolean))];
+  const [counts, mine, owners] = await Promise.all([
     BlogReaction.aggregate([
       { $match: { postId: { $in: ids } } },
       { $group: { _id: { postId: '$postId', type: '$type' }, count: { $sum: 1 } } },
     ]),
     BlogReaction.find({ postId: { $in: ids }, userId }).select('postId type').lean(),
+    User.find({ _id: { $in: ownerIds } }).select('_id avatarId').lean(),
   ]);
+  const avatarByOwner = new Map(owners.map(owner => [owner._id.toString(), owner.avatarId || 'comment-bubble']));
   const countByPost = new Map();
   counts.forEach(({ _id, count }) => {
     const postId = _id.postId.toString();
@@ -35,6 +38,7 @@ async function attachReactionData(posts, userId) {
       likesCount: (item.likesCount || 0) + countsForPost.likesCount,
       dislikesCount: (item.dislikesCount || 0) + countsForPost.dislikesCount,
       myReaction: myReactionByPost.get(item._id.toString()) || null,
+      avatarId: avatarByOwner.get(item.ownerId?.toString()) || 'comment-bubble',
     };
   });
 }
@@ -52,7 +56,7 @@ router.get('/', async (req, res) => {
 router.get('/authors/:id', async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });
-    const user = await User.findById(req.params.id).select('displayName createdAt').lean();
+    const user = await User.findById(req.params.id).select('displayName avatarId createdAt').lean();
     if (!user) return res.status(404).json({ message: 'Author not found' });
     const [posts, conversationTotals] = await Promise.all([
       BlogPost.find({ ownerId: user._id })
@@ -92,6 +96,7 @@ router.get('/authors/:id', async (req, res) => {
     res.json({
       id: user._id.toString(),
       displayName: user.displayName,
+      avatarId: user.avatarId || 'comment-bubble',
       joinedAt: user.createdAt,
       rank: badges[badgeIndex],
       posts: postsWithReactions,
@@ -131,7 +136,7 @@ router.post('/', async (req, res) => {
     const post = await BlogPost.create({
       ownerId: req.user._id, author, title, content, sourceTitle, sourceUrl, sourceLikesCount, sourceDislikesCount,
     });
-    res.status(201).json({ ...post.toObject(), likesCount: 0, dislikesCount: 0, myReaction: null });
+    res.status(201).json({ ...post.toObject(), avatarId: req.user.avatarId || 'comment-bubble', likesCount: 0, dislikesCount: 0, myReaction: null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Could not create blog post' });

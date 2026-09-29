@@ -56,7 +56,7 @@ async function verifyPassword(password, storedHash) {
 }
 
 function publicUser(user) {
-  return { id: user._id.toString(), email: user.email, displayName: user.displayName, theme: user.theme };
+  return { id: user._id.toString(), email: user.email, displayName: user.displayName, avatarId: user.avatarId || 'comment-bubble', theme: user.theme };
 }
 
 async function createSession(user, res) {
@@ -188,6 +188,11 @@ router.put('/profile', requireAuth, async (req, res) => {
     if (req.body.theme !== undefined) {
       if (!['day', 'midday', 'night', 'glow'].includes(req.body.theme)) return res.status(400).json({ message: 'Invalid theme' });
       update.theme = req.body.theme;
+    }
+    if (req.body.avatarId !== undefined) {
+      const validAvatarIds = ['comment-bubble', 'woman-writer', 'man-writer', 'robot', 'owl', 'fox', 'cat', 'notebook'];
+      if (!validAvatarIds.includes(req.body.avatarId)) return res.status(400).json({ message: 'Invalid avatar' });
+      update.avatarId = req.body.avatarId;
     }
     const user = await User.findByIdAndUpdate(req.user._id, { $set: update }, { new: true, runValidators: true });
     res.json({ user: publicUser(user) });

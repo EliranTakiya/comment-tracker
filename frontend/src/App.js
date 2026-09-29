@@ -30,6 +30,17 @@ const BADGES = [
   { name: 'טוקבקיסט על', min: 300, icon: '✹', className: 'super' },
 ];
 
+const AVATARS = [
+  { id: 'comment-bubble', label: 'בועת תגובה', emoji: '🗨️' },
+  { id: 'woman-writer', label: 'מגיבה', emoji: '👩🏻‍💻' },
+  { id: 'man-writer', label: 'מגיב', emoji: '👨🏻‍💻' },
+  { id: 'robot', label: 'רובוט', emoji: '🤖' },
+  { id: 'owl', label: 'ינשוף', emoji: '🦉' },
+  { id: 'fox', label: 'שועל', emoji: '🦊' },
+  { id: 'cat', label: 'חתול', emoji: '🐱' },
+  { id: 'notebook', label: 'מחברת', emoji: '📝' },
+];
+
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -58,6 +69,8 @@ function App() {
   const [repliesFilter, setRepliesFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
+  const [myBlogSearchText, setMyBlogSearchText] = useState('');
+  const [communityBlogSearchText, setCommunityBlogSearchText] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
   const [editingRepliesId, setEditingRepliesId] = useState(null);
@@ -67,6 +80,8 @@ function App() {
   const [statisticsTopicFilter, setStatisticsTopicFilter] = useState('all');
   const [editingConversationId, setEditingConversationId] = useState(null);
   const [theme, setTheme] = useState('day');
+  const [avatarSaving, setAvatarSaving] = useState(false);
+  const [avatarSaveStatus, setAvatarSaveStatus] = useState('');
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -165,6 +180,22 @@ function App() {
     } catch (err) {
       console.error('Save theme error:', err.response?.data || err.message);
       alert('שמירת ערכת הנושא נכשלה.');
+    }
+  };
+
+  const changeAvatar = async (nextAvatarId) => {
+    setAvatarSaving(true);
+    setAvatarSaveStatus('שומר את האווטר...');
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { avatarId: nextAvatarId });
+      setCurrentUser(response.data.user);
+      setBlogPosts(previous => previous.map(post => String(post.ownerId || '') === currentUser.id ? { ...post, avatarId: nextAvatarId } : post));
+      setAvatarSaveStatus('הבחירה נשמרה');
+    } catch (err) {
+      console.error('Save avatar error:', err.response?.data || err.message);
+      setAvatarSaveStatus('לא הצלחנו לשמור. נסו שוב.');
+    } finally {
+      setAvatarSaving(false);
     }
   };
 
@@ -336,7 +367,7 @@ function App() {
   const renderBlogPost = (post, showDelete = false) => {
     const commentDraft = blogCommentDrafts[post._id] || { content: '' };
     const isMyPost = showDelete && String(post.ownerId || '') === currentUser.id;
-    return <article className="blog-post" key={post._id}>
+    return <article className="blog-post" key={post._id} style={{ '--post-avatar-emoji': JSON.stringify((AVATARS.find(avatar => avatar.id === post.avatarId) || AVATARS[0]).emoji) }}>
       <div className="blog-post-heading"><div><h3>{post.title}</h3>{post.ownerId ? <button className="blog-post-author" onClick={() => openPublicProfile(post.ownerId)}>מאת {post.author || 'חבר/ת קהילה'}</button> : <span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span>}<span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{isMyPost && <div className="blog-post-controls"><button className="edit-blog-button" onClick={() => startBlogPostEdit(post)}>עריכת פוסט</button><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>}</div>
       <p className="blog-post-content">{post.content}</p>
       {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
@@ -531,6 +562,15 @@ function App() {
   const pointsFromCommentDislikes = totalCommentDislikes * -2;
   const myBlogPosts = currentUser ? blogPosts.filter(post => String(post.ownerId || '') === currentUser.id) : [];
   const communityBlogPosts = [...blogPosts].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+  const matchesBlogSearch = (post, search) => {
+    const query = search.trim().toLocaleLowerCase();
+    if (!query) return true;
+    const searchableText = [post.title, post.content, post.author, post.sourceTitle, post.sourceUrl,
+      ...(post.comments || []).flatMap(comment => [comment.author, comment.content])].filter(Boolean).join(' ').toLocaleLowerCase();
+    return searchableText.includes(query);
+  };
+  const filteredMyBlogPosts = myBlogPosts.filter(post => matchesBlogSearch(post, myBlogSearchText));
+  const filteredCommunityBlogPosts = communityBlogPosts.filter(post => matchesBlogSearch(post, communityBlogSearchText));
   const blogCommentsCount = myBlogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const pointsFromBlogPosts = myBlogPosts.length * 5;
   const pointsFromBlogComments = blogCommentsCount * 2;
@@ -544,6 +584,7 @@ function App() {
   const badgeThresholds = [0, 20, 60, 150, 300];
   const currentBadgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
   const currentBadge = BADGES[currentBadgeIndex];
+  const currentAvatar = AVATARS.find(avatar => avatar.id === currentUser?.avatarId) || AVATARS[0];
   const nextBadge = BADGES[currentBadgeIndex + 1] ? { ...BADGES[currentBadgeIndex + 1], min: badgeThresholds[currentBadgeIndex + 1] } : null;
   const currentBadgeMin = badgeThresholds[currentBadgeIndex];
   const badgeProgress = nextBadge
@@ -644,7 +685,7 @@ function App() {
               <button onClick={saveNickname}>שמור</button>
             </div>
           ) : (
-            <button className={`nickname-button ${nickname ? 'has-nickname' : ''}`} onClick={nickname ? startNicknameEdit : () => { setNicknameDraft(''); setIsEditingNickname(true); }}>
+            <button className={`nickname-button ${nickname ? 'has-nickname' : ''}`} style={{ '--avatar-emoji': JSON.stringify(currentAvatar.emoji) }} onClick={nickname ? startNicknameEdit : () => { setNicknameDraft(''); setIsEditingNickname(true); }}>
               {nickname || 'צור כינוי'}
             </button>
           )}
@@ -684,8 +725,8 @@ function App() {
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
         <div className="statistics-heading"><div><span className="section-kicker">הדרך שלך</span><h2 id="progress-title">ההתקדמות שלי</h2></div><span className={`user-badge ${currentBadge.className}`}><span className="badge-art" aria-hidden="true">{currentBadge.icon}</span><span className="badge-copy"><strong>{currentBadge.name}</strong><small>הדרגה הנוכחית</small></span></span></div>
         <div className="progress-summary"><strong>{totalPoints}</strong><span>נקודות זכות</span></div>
-        {nextBadge ? <><p className="next-badge-copy">עוד {nextBadge.min - totalPoints} נקודות לדרגת {nextBadge.name}</p><div className="progress-track" role="progressbar" aria-label="התקדמות לדרגה הבאה" aria-valuenow={badgeProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${badgeProgress}%` }} /></div></> : <p className="next-badge-copy">הגעת לדרגה הגבוהה ביותר — כל הכבוד!</p>}
-        <div className="badge-milestones">{BADGES.map((badge, index) => <div key={badge.className} className={`badge-milestone ${totalPoints >= badgeThresholds[index] ? 'earned' : ''}`}><span className="badge-milestone-icon">{badge.icon}</span><strong>{badge.name}</strong><small>{badgeThresholds[index]} נקודות</small></div>)}</div>
+        {nextBadge ? <><p className="next-badge-copy">עוד {nextBadge.min - totalPoints} נקודות לדרגת {nextBadge.name}</p><div className="progress-track" role="progressbar" aria-label="התקדמות לדרגה הבאה" aria-valuenow={badgeProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${badgeProgress}%` }} /></div><div className="progress-track-caption"><span>{badgeProgress}% מהדרך</span><span>{totalPoints} / {nextBadge.min} נקודות</span></div></> : <p className="next-badge-copy">הגעת לדרגה הגבוהה ביותר — כל הכבוד!</p>}
+        <div className="badge-milestones">{BADGES.map((badge, index) => <div key={badge.className} className={`badge-milestone ${totalPoints >= badgeThresholds[index] ? 'earned' : ''} ${index === currentBadgeIndex ? 'current' : ''}`}><span className="badge-milestone-icon">{badge.icon}</span><strong>{badge.name}</strong><small>{badgeThresholds[index]} נקודות</small><span className="badge-milestone-state">{index === currentBadgeIndex ? 'הדרגה שלך' : totalPoints >= badgeThresholds[index] ? 'הושגה' : 'בדרך'}</span></div>)}</div>
       </section>
 
       <section className="progress-details" aria-label="פירוט נקודות ופעילות הבלוג">
@@ -714,6 +755,7 @@ function App() {
 
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span></div>
+        <label className="blog-search"><span>חיפוש בבלוג שלי</span><input type="search" value={myBlogSearchText} onChange={event => setMyBlogSearchText(event.target.value)} placeholder="כותרת, תוכן או תגובה..." aria-label="חיפוש בבלוג שלי" /><small>{filteredMyBlogPosts.length} מתוך {myBlogPosts.length} פוסטים</small></label>
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
         <form className={`blog-compose ${isBlogFormOpen ? 'is-open' : ''}`} onSubmit={createBlogPost}>
           <button className="blog-compose-toggle" type="button" aria-expanded={isBlogFormOpen} onClick={() => setIsBlogFormOpen(open => !open)}>
@@ -730,13 +772,14 @@ function App() {
           </div>
           </div>
         </form>
-        {myBlogPosts.length ? <div className="blog-post-list">{myBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.</p></div>}
+        {filteredMyBlogPosts.length ? <div className="blog-post-list">{filteredMyBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{myBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>{myBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.'}</p></div>}
       </section>
 
       <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span></div>
+        <label className="blog-search"><span>חיפוש בבלוג המגיבים</span><input type="search" value={communityBlogSearchText} onChange={event => setCommunityBlogSearchText(event.target.value)} placeholder="כותרת, כותב, תוכן או תגובה..." aria-label="חיפוש בבלוג המגיבים" /><small>{filteredCommunityBlogPosts.length} מתוך {communityBlogPosts.length} פוסטים</small></label>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
-        {communityBlogPosts.length ? <div className="blog-post-list">{communityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>הבלוג הקהילתי עוד ריק</h3><p>פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.</p></div>}
+        {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
       </section>
 
       <section className="settings-section" id="settings" aria-labelledby="settings-title">
@@ -749,6 +792,15 @@ function App() {
               <label className="settings-field">הכינוי שלך<input maxLength="80" required value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} placeholder="הקלידו כינוי" /></label>
               <button className="primary-button" type="submit">שמירת כינוי</button>
             </form>
+            <div className="settings-avatar-picker">
+              <div className="settings-avatar-heading"><strong>האווטר שלך</strong><span>בחר/י דמות שתופיע בפרופיל הציבורי</span></div>
+              <div className="settings-avatar-options" role="group" aria-label="בחירת אווטר">
+                {AVATARS.map(avatar => <button type="button" key={avatar.id} className={`settings-avatar-option ${currentUser.avatarId === avatar.id || (!currentUser.avatarId && avatar.id === 'comment-bubble') ? 'selected' : ''}`} aria-pressed={currentUser.avatarId === avatar.id || (!currentUser.avatarId && avatar.id === 'comment-bubble')} aria-label={avatar.label} title={avatar.label} disabled={avatarSaving} onClick={() => changeAvatar(avatar.id)}>
+                  <span className="settings-avatar-face">{avatar.emoji}</span><span className="avatar-reply-mark" aria-hidden="true">↩</span><small>{avatar.label}</small>
+                </button>)}
+              </div>
+              {avatarSaveStatus && <small className={`avatar-save-status ${avatarSaving ? 'is-saving' : ''}`} role="status">{avatarSaveStatus}</small>}
+            </div>
           </article>
           <article className="settings-card">
             <div className="settings-card-heading"><span aria-hidden="true">◐</span><div><h3>מראה האתר</h3><p>בחר/י את ערכת הנושא שלך</p></div></div>
@@ -871,7 +923,7 @@ function App() {
       {isPublicProfileOpen && <div className="profile-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setIsPublicProfileOpen(false); }}>
         <section className="public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title">
           <div className="public-profile-heading">
-            <div className="public-profile-avatar" aria-hidden="true">{publicProfile?.displayName?.slice(0, 1) || '✦'}</div>
+            <div className="public-profile-avatar" aria-hidden="true"><span>{AVATARS.find(avatar => avatar.id === publicProfile?.avatarId)?.emoji || AVATARS[0].emoji}</span><i>↩</i></div>
             <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{publicProfile && <><small>{publicProfile.posts.length} פוסטים שפורסמו</small><div className="public-profile-meta">
               {publicProfile.rank && <span className={`user-badge public-profile-rank ${publicProfile.rank.className}`}><span className="badge-art" aria-hidden="true">{publicProfile.rank.icon}</span><span className="badge-copy"><strong>{publicProfile.rank.name}</strong><small>דרגת המגיב</small></span></span>}
               {publicProfile.joinedAt && <span className="public-profile-tenure">מגיב באתר מתאריך {new Date(publicProfile.joinedAt).toLocaleDateString('he-IL')}</span>}
