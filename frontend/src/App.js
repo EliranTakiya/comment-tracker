@@ -154,6 +154,7 @@ function App() {
     setBlogDraftSourceConversationIds([]);
     setBlogCommentDrafts({});
     setAuthMode('login');
+    setAuthDraft({ email: '', password: '', passwordConfirm: '', displayName: '', setupCode: '' });
   };
 
   const changeTheme = async (nextTheme) => {
@@ -585,6 +586,7 @@ function App() {
         <div className="splash-loading-copy"><span className="splash-loader-dots" aria-hidden="true"><i /><i /><i /></span><p>טוען את החשבון שלך</p></div>
         <div className="splash-progress-track" aria-hidden="true"><span /></div>
         <span className="splash-footer">שומרים את כל השיחות החשובות קרוב</span>
+        <span className="splash-credit">נבנה על ידי <strong>BeSpoke</strong></span>
       </div>
     </main>;
   }

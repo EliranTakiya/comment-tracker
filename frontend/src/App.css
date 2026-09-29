@@ -179,6 +179,8 @@ h1, h2, h3, p { margin-top: 0; }
 .splash-progress-track { width: 150px; height: 3px; margin-top: 13px; overflow: hidden; border-radius: 10px; background: rgba(255,255,255,.16); direction: ltr; }
 .splash-progress-track span { display: block; width: 38%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8bd6ad, #ffd0a5); animation: loading-progress 1.8s ease-in-out infinite; }
 .splash-footer { margin-top: 17px; color: rgba(229,244,235,.62); font-size: 11px; letter-spacing: .04em; }
+.splash-credit { margin-top: 9px; color: rgba(229,244,235,.48); font-size: 10px; letter-spacing: .03em; }
+.splash-credit strong { color: rgba(229,244,235,.82); font-weight: 800; }
 @keyframes splash-glow { from { transform: translate3d(-2%, -1%, 0) scale(.98); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
 @keyframes card-float { 0%, 100% { transform: translate(50%, 0) rotate(-3deg); } 50% { transform: translate(50%, -7px) rotate(-1deg); } }
 @keyframes bubble-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
