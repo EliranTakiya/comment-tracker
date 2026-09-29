@@ -287,7 +287,13 @@ textarea { min-height: 96px; resize: vertical; }
 .blog-count { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; background: var(--page-bg); font-size: 12px; }
 .blog-count strong { color: var(--mint-strong); font: 700 20px 'Space Grotesk',sans-serif; }
 .blog-section { margin: 0 0 38px; padding: 25px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: 0 14px 36px rgba(31,49,56,.06); }
-.blog-compose { display: grid; gap: 12px; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--page-bg); }
+.blog-compose { display: grid; gap: 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--page-bg); }
+.blog-compose-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; padding: 0; color: var(--ink); border: 0; background: transparent; text-align: right; }
+.blog-compose-toggle > span:first-child { display: grid; gap: 3px; }
+.blog-compose-toggle strong { font-size: 15px; }
+.blog-compose-toggle:hover strong { color: var(--mint-strong); }
+.blog-compose-content { display: grid; max-height: 0; gap: 12px; overflow: hidden; visibility: hidden; opacity: 0; transition: max-height .4s ease, opacity .25s ease, margin-top .35s ease, visibility .25s; }
+.blog-compose-content.is-open { max-height: 850px; margin-top: 14px; visibility: visible; opacity: 1; }
 .blog-compose label { display: grid; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
 .blog-compose input, .blog-compose textarea { background: var(--surface); }
 .blog-compose textarea { min-height: 130px; }
@@ -339,6 +345,7 @@ textarea { min-height: 96px; resize: vertical; }
 .app.theme-night .blog-count, .app.theme-night .blog-compose, .app.theme-night .blog-comments li { background: #24343d; }
 
 @media (max-width: 700px) {
+  #comments, #statistics, #progress, #blog, #community-blog { scroll-margin-top: calc(82px + env(safe-area-inset-top)); }
   .main-nav { position: sticky; top: max(8px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 0; margin: 0 0 20px; padding: 6px; overflow: visible; border-radius: 17px; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(14px); }
   .mobile-nav-toggle { display: flex; width: 100%; min-height: 48px; align-items: center; gap: 11px; padding: 8px 12px; color: var(--ink); border: 0; border-radius: 12px; background: transparent; font-size: 14px; font-weight: 800; text-align: right; }
   .mobile-nav-toggle:hover, .mobile-nav-toggle[aria-expanded="true"] { color: var(--mint-strong); background: var(--mint); }

@@ -53,6 +53,7 @@ function App() {
   const [siteFilter, setSiteFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
   const [editingRepliesId, setEditingRepliesId] = useState(null);
   const [repliesDraft, setRepliesDraft] = useState('');
   const [editingReactionsId, setEditingReactionsId] = useState(null);
@@ -66,6 +67,14 @@ function App() {
   const [nickname, setNickname] = useState('');
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
+
+  const navigateToSection = (event, sectionId) => {
+    event.preventDefault();
+    setIsMobileNavOpen(false);
+    window.setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, isMobileNavOpen ? 320 : 0);
+  };
 
   useEffect(() => {
     let active = true;
@@ -202,6 +211,7 @@ function App() {
       setBlogPosts(previous => [response.data, ...previous]);
       setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
       setBlogDraftSourceConversationIds([]);
+      setIsBlogFormOpen(false);
     } catch (err) {
       console.error('Create blog post error:', err.response?.data || err.message);
       alert('שמירת הפוסט נכשלה.');
@@ -214,6 +224,7 @@ function App() {
     if (hasDraft && !window.confirm('למחוק את טיוטת הפוסט?')) return;
     setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
     setBlogDraftSourceConversationIds([]);
+    setIsBlogFormOpen(false);
   };
 
   const deleteBlogPost = async (post) => {
@@ -314,6 +325,7 @@ function App() {
     setBlogDraftSourceConversationIds(previous => previous.includes(conversation._id)
       ? previous
       : [...previous, conversation._id]);
+    setIsBlogFormOpen(true);
     setBlogDraft(previous => ({
       title: previous.title || `מתוך תגובה על: ${conversation.pageTitle || conversation.siteName}`,
       content: previous.content ? `${previous.content}\n\n${textToAdd}` : textToAdd,
@@ -563,7 +575,7 @@ function App() {
           <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
         </button>
         <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a href="#home" onClick={() => setIsMobileNavOpen(false)}>ראשי</a><a href="#comments" onClick={() => setIsMobileNavOpen(false)}>התגובות שלי</a><a href="#statistics" onClick={() => setIsMobileNavOpen(false)}>הסטטיסטיקות שלי</a><a href="#progress" onClick={() => setIsMobileNavOpen(false)}>ההתקדמות שלי</a><a href="#blog" onClick={() => setIsMobileNavOpen(false)}>הבלוג שלי</a><a href="#community-blog" onClick={() => setIsMobileNavOpen(false)}>בלוג המגיבים</a>
+          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a>
         </div>
       </nav>
 
@@ -616,13 +628,19 @@ function App() {
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span></div>
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
-        <form className="blog-compose" onSubmit={createBlogPost}>
+        <form className={`blog-compose ${isBlogFormOpen ? 'is-open' : ''}`} onSubmit={createBlogPost}>
+          <button className="blog-compose-toggle" type="button" aria-expanded={isBlogFormOpen} onClick={() => setIsBlogFormOpen(open => !open)}>
+            <span><span className="section-kicker">פוסט חדש</span><strong>פרסום פוסט חדש</strong></span>
+            <span className={`toggle-icon ${isBlogFormOpen ? 'is-open' : ''}`} aria-hidden="true">⌄</span>
+          </button>
+          <div className={`blog-compose-content ${isBlogFormOpen ? 'is-open' : ''}`} aria-hidden={!isBlogFormOpen}>
           <label>כותרת הפוסט<input maxLength="160" required value={blogDraft.title} onChange={event => setBlogDraft(previous => ({ ...previous, title: event.target.value }))} placeholder="על מה בא לך לכתוב?" /></label>
           <label>תוכן הפוסט<textarea maxLength="10000" required value={blogDraft.content} onChange={event => setBlogDraft(previous => ({ ...previous, content: event.target.value }))} placeholder="שתף מחשבות, רעיונות או סיפור..." /></label>
           <label>קישור לכתבה המקורית (לא חובה)<input type="url" maxLength="2048" value={blogDraft.sourceUrl} onChange={event => setBlogDraft(previous => ({ ...previous, sourceUrl: event.target.value }))} placeholder="https://example.com/article" dir="ltr" /></label>
           <div className="blog-compose-actions">
             <button className="primary-button" type="submit">פרסום פוסט · 5 נקודות</button>
             <button className="blog-cancel-button" type="button" onClick={cancelBlogDraft}>ביטול</button>
+          </div>
           </div>
         </form>
         {myBlogPosts.length ? <div className="blog-post-list">{myBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.</p></div>}
