@@ -124,6 +124,8 @@ h1, h2, h3, p { margin-top: 0; }
 .sign-out-button { margin-top: 8px; padding: 5px 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 11px; font-weight: 700; }
 .sign-out-button:hover { color: #b25d4e; border-color: #e9b4aa; background: #fff0ed; }
 .auth-page { display: grid; min-height: 100vh; place-items: center; padding: 28px 16px; background: var(--cream); }
+.auth-credit { margin: -14px 0 0; color: var(--muted); font-size: 12px; letter-spacing: .03em; }
+.auth-credit strong { color: var(--ink); font-weight: 800; }
 .auth-card { width: min(100%, 440px); padding: 32px; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: 0 18px 50px rgba(31,49,56,.1); }
 .auth-card h1 { margin: 5px 0 8px; font-size: 28px; }
 .auth-card > p { margin: 0 0 20px; color: var(--muted); line-height: 1.6; }

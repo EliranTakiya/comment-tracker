@@ -33,6 +33,7 @@ const BADGES = [
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [splashDelayDone, setSplashDelayDone] = useState(() => sessionStorage.getItem('comment-tracker-splash-seen') === 'true');
   const [authStatus, setAuthStatus] = useState({ needsInitialOwner: false, setupCodeConfigured: false });
   const [authMode, setAuthMode] = useState('login');
   const [authDraft, setAuthDraft] = useState({ email: '', password: '', passwordConfirm: '', displayName: localStorage.getItem('comment-tracker-nickname') || '', setupCode: '' });
@@ -72,6 +73,15 @@ function App() {
   const [nickname, setNickname] = useState('');
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
+
+  useEffect(() => {
+    if (splashDelayDone) return undefined;
+    const timeout = window.setTimeout(() => {
+      sessionStorage.setItem('comment-tracker-splash-seen', 'true');
+      setSplashDelayDone(true);
+    }, 4000);
+    return () => window.clearTimeout(timeout);
+  }, [splashDelayDone]);
 
   const navigateToSection = (event, sectionId) => {
     event.preventDefault();
@@ -553,7 +563,7 @@ function App() {
   const totalDislikes = statisticsConvos.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
   const statisticsReplies = statisticsConvos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
 
-  if (!authReady) {
+  if (!authReady || !splashDelayDone) {
     return <main className="splash-screen" dir="rtl" role="status" aria-live="polite" aria-busy="true">
       <span className="splash-orb splash-orb-one" aria-hidden="true" />
       <span className="splash-orb splash-orb-two" aria-hidden="true" />
@@ -603,6 +613,7 @@ function App() {
           {registering ? 'כבר יש לך חשבון? התחברות' : 'משתמש חדש? יצירת חשבון'}
         </button>}
       </section>
+      <p className="auth-credit">נבנה על ידי <strong>BeSpoke</strong></p>
     </main>;
   }
 
