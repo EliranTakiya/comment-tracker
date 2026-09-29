@@ -548,6 +548,7 @@ function App() {
           <p className="eyebrow">COMMENT TRACKER</p>
           <h1>התגובות שלך, במקום אחד</h1>
           <p className="hero-subtitle">שומרים, מסננים וחוזרים בקלות לכל תגובה חשובה.</p>
+          <div className="hero-count-compact"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
         </div>
         <div className="nickname-area">
           {isEditingNickname ? (
