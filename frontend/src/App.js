@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -71,6 +71,9 @@ function App() {
   const [searchText, setSearchText] = useState('');
   const [myBlogSearchText, setMyBlogSearchText] = useState('');
   const [communityBlogSearchText, setCommunityBlogSearchText] = useState('');
+  const [blogSortOrder, setBlogSortOrder] = useState('newest');
+  const [successMessage, setSuccessMessage] = useState('');
+  const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
   const [editingRepliesId, setEditingRepliesId] = useState(null);
@@ -89,6 +92,12 @@ function App() {
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
 
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    if (successTimerRef.current) window.clearTimeout(successTimerRef.current);
+    successTimerRef.current = window.setTimeout(() => setSuccessMessage(''), 2800);
+  };
+
   useEffect(() => {
     if (splashDelayDone) return undefined;
     const timeout = window.setTimeout(() => {
@@ -97,6 +106,10 @@ function App() {
     }, 4000);
     return () => window.clearTimeout(timeout);
   }, [splashDelayDone]);
+
+  useEffect(() => () => {
+    if (successTimerRef.current) window.clearTimeout(successTimerRef.current);
+  }, []);
 
   const navigateToSection = (event, sectionId) => {
     event.preventDefault();
@@ -177,6 +190,7 @@ function App() {
     try {
       const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { theme: nextTheme });
       setCurrentUser(response.data.user);
+      showSuccess('ערכת הנושא נשמרה');
     } catch (err) {
       console.error('Save theme error:', err.response?.data || err.message);
       alert('שמירת ערכת הנושא נכשלה.');
@@ -212,6 +226,7 @@ function App() {
       setCurrentUser(response.data.user);
       setNickname(response.data.user.displayName);
       setIsEditingNickname(false);
+      showSuccess('הכינוי נשמר');
     } catch (err) {
       console.error('Save display name error:', err.response?.data || err.message);
       alert('שמירת הכינוי נכשלה.');
@@ -290,6 +305,7 @@ function App() {
       setBlogDraftSourceConversationIds([]);
       setEditingBlogPostId(null);
       setIsBlogFormOpen(false);
+      showSuccess(editingBlogPostId ? 'הפוסט עודכן' : 'הפוסט פורסם');
     } catch (err) {
       console.error(editingBlogPostId ? 'Update blog post error:' : 'Create blog post error:', err.response?.data || err.message);
       alert(editingBlogPostId ? 'עדכון הפוסט נכשל.' : 'שמירת הפוסט נכשלה.');
@@ -319,6 +335,7 @@ function App() {
     try {
       await axios.delete(`${API_BASE_URL}/api/blog-posts/${post._id}`);
       setBlogPosts(previous => previous.filter(item => item._id !== post._id));
+      showSuccess('הפוסט נמחק');
       if (editingBlogPostId === post._id) {
         setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
         setBlogDraftSourceConversationIds([]);
@@ -344,6 +361,7 @@ function App() {
       const response = await axios.post(`${API_BASE_URL}/api/blog-posts/${post._id}/comments`, { author, content });
       setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
       setBlogCommentDrafts(previous => ({ ...previous, [post._id]: { author: '', content: '' } }));
+      showSuccess('התגובה נוספה');
     } catch (err) {
       console.error('Add blog comment error:', err.response?.data || err.message);
       alert('שמירת התגובה נכשלה.');
@@ -402,6 +420,7 @@ function App() {
     try {
       const response = await axios.put(`${API_BASE_URL}/api/blog-posts/${post._id}/reactions`, { reaction: next });
       setBlogPosts(previous => previous.map(item => item._id === post._id ? response.data : item));
+      showSuccess('הדירוג נשמר');
     } catch (err) {
       console.error('Update blog reaction error:', err.response?.data || err.message);
       alert('עדכון הלייק או הדיסלייק נכשל.');
@@ -447,6 +466,7 @@ function App() {
         setForm(emptyForm);
         load();
       }
+      showSuccess(editingConversationId ? 'התגובה השמורה עודכנה' : 'התגובה נשמרה');
     } catch (err) {
       console.error('Save conversation error:', err.response?.data || err.message);
       alert(editingConversationId ? 'עדכון הכרטיס נכשל.' : 'שמירת התגובה נכשלה.');
@@ -472,6 +492,7 @@ function App() {
     try {
       await axios.delete(`${API_BASE_URL}/api/conversations/${conversation._id}`);
       setConvos(previous => previous.filter(item => item._id !== conversation._id));
+      showSuccess('התגובה השמורה נמחקה');
     } catch (err) {
       console.error('Delete error:', err.response?.data || err.message);
       alert('מחיקת התגובה נכשלה.');
@@ -494,6 +515,7 @@ function App() {
       setConvos(previous => previous.map(item => item._id === conversation._id ? response.data : item));
       setEditingRepliesId(null);
       setRepliesDraft('');
+      showSuccess('מספר המגיבים עודכן');
     } catch (err) {
       console.error('Update replies error:', err.response?.data || err.message);
       alert('עדכון מספר המגיבים נכשל.');
@@ -516,6 +538,7 @@ function App() {
       const response = await axios.put(`${API_BASE_URL}/api/conversations/${conversation._id}/reactions`, { likesCount, dislikesCount });
       setConvos(previous => previous.map(item => item._id === conversation._id ? response.data : item));
       setEditingReactionsId(null);
+      showSuccess('הלייקים והדיסלייקים עודכנו');
     } catch (err) {
       console.error('Update reactions error:', err.response?.data || err.message);
       alert('עדכון הלייקים והדיסלייקים נכשל.');
@@ -561,7 +584,7 @@ function App() {
   const pointsFromCommentLikes = totalCommentLikes * 2;
   const pointsFromCommentDislikes = totalCommentDislikes * -2;
   const myBlogPosts = currentUser ? blogPosts.filter(post => String(post.ownerId || '') === currentUser.id) : [];
-  const communityBlogPosts = [...blogPosts].sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
+  const communityBlogPosts = [...blogPosts];
   const matchesBlogSearch = (post, search) => {
     const query = search.trim().toLocaleLowerCase();
     if (!query) return true;
@@ -569,8 +592,17 @@ function App() {
       ...(post.comments || []).flatMap(comment => [comment.author, comment.content])].filter(Boolean).join(' ').toLocaleLowerCase();
     return searchableText.includes(query);
   };
-  const filteredMyBlogPosts = myBlogPosts.filter(post => matchesBlogSearch(post, myBlogSearchText));
-  const filteredCommunityBlogPosts = communityBlogPosts.filter(post => matchesBlogSearch(post, communityBlogSearchText));
+  const sortBlogPosts = posts => [...posts].sort((first, second) => {
+    if (blogSortOrder === 'popular') {
+      const likesDifference = (second.likesCount || 0) - (first.likesCount || 0);
+      if (likesDifference) return likesDifference;
+      const commentsDifference = (second.comments?.length || 0) - (first.comments?.length || 0);
+      if (commentsDifference) return commentsDifference;
+    }
+    return new Date(second.createdAt) - new Date(first.createdAt);
+  });
+  const filteredMyBlogPosts = sortBlogPosts(myBlogPosts.filter(post => matchesBlogSearch(post, myBlogSearchText)));
+  const filteredCommunityBlogPosts = sortBlogPosts(communityBlogPosts.filter(post => matchesBlogSearch(post, communityBlogSearchText)));
   const blogCommentsCount = myBlogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const pointsFromBlogPosts = myBlogPosts.length * 5;
   const pointsFromBlogComments = blogCommentsCount * 2;
@@ -662,6 +694,7 @@ function App() {
 
   return (
     <div className={`app theme-${theme}`} dir="rtl">
+      {successMessage && <div className="success-toast" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{successMessage}</div>}
       <header className="hero" id="home">
         <div className="theme-picker">
           <button className="brand-mark" onClick={() => setShowThemeMenu(!showThemeMenu)} aria-label="בחירת רקע" aria-expanded={showThemeMenu}>CT</button>
@@ -757,6 +790,7 @@ function App() {
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span></div>
         <label className="blog-search"><span>חיפוש בבלוג שלי</span><input type="search" value={myBlogSearchText} onChange={event => setMyBlogSearchText(event.target.value)} placeholder="כותרת, תוכן או תגובה..." aria-label="חיפוש בבלוג שלי" /><small>{filteredMyBlogPosts.length} מתוך {myBlogPosts.length} פוסטים</small></label>
+        <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
         <form className={`blog-compose ${isBlogFormOpen ? 'is-open' : ''}`} onSubmit={createBlogPost}>
           <button className="blog-compose-toggle" type="button" aria-expanded={isBlogFormOpen} onClick={() => setIsBlogFormOpen(open => !open)}>
@@ -779,6 +813,7 @@ function App() {
       <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span></div>
         <label className="blog-search"><span>חיפוש בבלוג המגיבים</span><input type="search" value={communityBlogSearchText} onChange={event => setCommunityBlogSearchText(event.target.value)} placeholder="כותרת, כותב, תוכן או תגובה..." aria-label="חיפוש בבלוג המגיבים" /><small>{filteredCommunityBlogPosts.length} מתוך {communityBlogPosts.length} פוסטים</small></label>
+        <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
         {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
       </section>
