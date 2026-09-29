@@ -44,6 +44,11 @@ function App() {
   const [copiedSourcePostId, setCopiedSourcePostId] = useState(null);
   const [blogDraft, setBlogDraft] = useState({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
   const [blogDraftSourceConversationIds, setBlogDraftSourceConversationIds] = useState([]);
+  const [editingBlogPostId, setEditingBlogPostId] = useState(null);
+  const [isPublicProfileOpen, setIsPublicProfileOpen] = useState(false);
+  const [publicProfile, setPublicProfile] = useState(null);
+  const [publicProfileLoading, setPublicProfileLoading] = useState(false);
+  const [publicProfileError, setPublicProfileError] = useState('');
   const [blogCommentDrafts, setBlogCommentDrafts] = useState({});
   const [pendingBlogReactions, setPendingBlogReactions] = useState({});
   const [topicFilter, setTopicFilter] = useState('all');
@@ -191,6 +196,32 @@ function App() {
     loadBlogPosts();
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!isPublicProfileOpen) return undefined;
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setIsPublicProfileOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isPublicProfileOpen]);
+
+  const openPublicProfile = async (userId) => {
+    if (!userId) return;
+    setIsPublicProfileOpen(true);
+    setPublicProfile(null);
+    setPublicProfileError('');
+    setPublicProfileLoading(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/blog-posts/authors/${userId}`);
+      setPublicProfile(response.data);
+    } catch (err) {
+      console.error('Load public profile error:', err.response?.data || err.message);
+      setPublicProfileError('לא הצלחנו לטעון את הפרופיל. נסו שוב.');
+    } finally {
+      setPublicProfileLoading(false);
+    }
+  };
+
   const createBlogPost = async (event) => {
     event.preventDefault();
     const author = nickname.trim();
@@ -204,27 +235,41 @@ function App() {
     }
     if (!title || !content) return;
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/blog-posts`, {
-        author, title, content, sourceTitle, sourceUrl,
-        sourceConversationIds: blogDraftSourceConversationIds,
-      });
-      setBlogPosts(previous => [response.data, ...previous]);
+      const postData = { author, title, content, sourceTitle, sourceUrl };
+      const response = editingBlogPostId
+        ? await axios.put(`${API_BASE_URL}/api/blog-posts/${editingBlogPostId}`, postData)
+        : await axios.post(`${API_BASE_URL}/api/blog-posts`, { ...postData, sourceConversationIds: blogDraftSourceConversationIds });
+      if (editingBlogPostId) {
+        setBlogPosts(previous => previous.map(post => post._id === editingBlogPostId ? response.data : post));
+      } else {
+        setBlogPosts(previous => [response.data, ...previous]);
+      }
       setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
       setBlogDraftSourceConversationIds([]);
+      setEditingBlogPostId(null);
       setIsBlogFormOpen(false);
     } catch (err) {
-      console.error('Create blog post error:', err.response?.data || err.message);
-      alert('שמירת הפוסט נכשלה.');
+      console.error(editingBlogPostId ? 'Update blog post error:' : 'Create blog post error:', err.response?.data || err.message);
+      alert(editingBlogPostId ? 'עדכון הפוסט נכשל.' : 'שמירת הפוסט נכשלה.');
     }
   };
 
   const cancelBlogDraft = () => {
     const hasDraft = Object.values(blogDraft).some(value => value.trim())
       || blogDraftSourceConversationIds.length > 0;
-    if (hasDraft && !window.confirm('למחוק את טיוטת הפוסט?')) return;
+    if (hasDraft && !window.confirm(editingBlogPostId ? 'לבטל את עריכת הפוסט? השינויים שלא נשמרו יימחקו.' : 'למחוק את טיוטת הפוסט?')) return;
     setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
     setBlogDraftSourceConversationIds([]);
+    setEditingBlogPostId(null);
     setIsBlogFormOpen(false);
+  };
+
+  const startBlogPostEdit = (post) => {
+    setEditingBlogPostId(post._id);
+    setBlogDraft({ title: post.title || '', content: post.content || '', sourceTitle: post.sourceTitle || '', sourceUrl: post.sourceUrl || '' });
+    setBlogDraftSourceConversationIds([]);
+    setIsBlogFormOpen(true);
+    document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const deleteBlogPost = async (post) => {
@@ -232,6 +277,12 @@ function App() {
     try {
       await axios.delete(`${API_BASE_URL}/api/blog-posts/${post._id}`);
       setBlogPosts(previous => previous.filter(item => item._id !== post._id));
+      if (editingBlogPostId === post._id) {
+        setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
+        setBlogDraftSourceConversationIds([]);
+        setEditingBlogPostId(null);
+        setIsBlogFormOpen(false);
+      }
     } catch (err) {
       console.error('Delete blog post error:', err.response?.data || err.message);
       alert('מחיקת הפוסט נכשלה.');
@@ -273,8 +324,9 @@ function App() {
 
   const renderBlogPost = (post, showDelete = false) => {
     const commentDraft = blogCommentDrafts[post._id] || { content: '' };
+    const isMyPost = showDelete && String(post.ownerId || '') === currentUser.id;
     return <article className="blog-post" key={post._id}>
-      <div className="blog-post-heading"><div><h3>{post.title}</h3><span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span><span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{showDelete && String(post.ownerId || '') === currentUser.id && <button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button>}</div>
+      <div className="blog-post-heading"><div><h3>{post.title}</h3>{post.ownerId ? <button className="blog-post-author" onClick={() => openPublicProfile(post.ownerId)}>מאת {post.author || 'חבר/ת קהילה'}</button> : <span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span>}<span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{isMyPost && <div className="blog-post-controls"><button className="edit-blog-button" onClick={() => startBlogPostEdit(post)}>עריכת פוסט</button><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>}</div>
       <p className="blog-post-content">{post.content}</p>
       {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
       {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-original-metrics" aria-label="לייקים ודיסלייקים של התגובה המקורית, לתצוגה בלבד">
@@ -630,7 +682,7 @@ function App() {
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
         <form className={`blog-compose ${isBlogFormOpen ? 'is-open' : ''}`} onSubmit={createBlogPost}>
           <button className="blog-compose-toggle" type="button" aria-expanded={isBlogFormOpen} onClick={() => setIsBlogFormOpen(open => !open)}>
-            <span><span className="section-kicker">פוסט חדש</span><strong>פרסום פוסט חדש</strong></span>
+            <span><span className="section-kicker">{editingBlogPostId ? 'עריכת פוסט' : 'פוסט חדש'}</span><strong>{editingBlogPostId ? 'עדכון הפוסט' : 'פרסום פוסט חדש'}</strong></span>
             <span className={`toggle-icon ${isBlogFormOpen ? 'is-open' : ''}`} aria-hidden="true">⌄</span>
           </button>
           <div className={`blog-compose-content ${isBlogFormOpen ? 'is-open' : ''}`} aria-hidden={!isBlogFormOpen}>
@@ -638,8 +690,8 @@ function App() {
           <label>תוכן הפוסט<textarea maxLength="10000" required value={blogDraft.content} onChange={event => setBlogDraft(previous => ({ ...previous, content: event.target.value }))} placeholder="שתף מחשבות, רעיונות או סיפור..." /></label>
           <label>קישור לכתבה המקורית (לא חובה)<input type="url" maxLength="2048" value={blogDraft.sourceUrl} onChange={event => setBlogDraft(previous => ({ ...previous, sourceUrl: event.target.value }))} placeholder="https://example.com/article" dir="ltr" /></label>
           <div className="blog-compose-actions">
-            <button className="primary-button" type="submit">פרסום פוסט · 5 נקודות</button>
-            <button className="blog-cancel-button" type="button" onClick={cancelBlogDraft}>ביטול</button>
+            <button className="primary-button" type="submit">{editingBlogPostId ? 'שמירת שינויים' : 'פרסום פוסט · 5 נקודות'}</button>
+            <button className="blog-cancel-button" type="button" onClick={cancelBlogDraft}>{editingBlogPostId ? 'ביטול עריכה' : 'ביטול'}</button>
           </div>
           </div>
         </form>
@@ -781,6 +833,20 @@ function App() {
         })}
       </div> : <div className="empty-state"><span>◌</span><h3>{convos.length ? 'אין תוצאות לסינון' : 'עדיין אין תגובות שמורות'}</h3><p>{convos.length ? 'נסו לשנות את הנושא או טווח התאריך.' : 'התגובה הראשונה שלכם מחכה כאן.'}</p></div>}
 
+      {isPublicProfileOpen && <div className="profile-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setIsPublicProfileOpen(false); }}>
+        <section className="public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title">
+          <div className="public-profile-heading">
+            <div className="public-profile-avatar" aria-hidden="true">{publicProfile?.displayName?.slice(0, 1) || '✦'}</div>
+            <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{publicProfile && <small>{publicProfile.posts.length} פוסטים שפורסמו</small>}</div>
+            <button className="profile-modal-close" type="button" aria-label="סגירת הפרופיל" onClick={() => setIsPublicProfileOpen(false)}>×</button>
+          </div>
+          {publicProfileError && <p className="public-profile-message error">{publicProfileError}</p>}
+          {publicProfileLoading && <p className="public-profile-message">טוען את הפוסטים…</p>}
+          {publicProfile && (publicProfile.posts.length
+            ? <div className="blog-post-list public-profile-posts">{publicProfile.posts.map(post => renderBlogPost(post, false))}</div>
+            : <div className="empty-state public-profile-empty"><h3>עדיין אין פוסטים</h3><p>הפוסטים שיפורסמו יופיעו כאן.</p></div>)}
+        </section>
+      </div>}
       <footer className="app-footer">© All rights reserved to Eliran Takiya</footer>
     </div>
   );

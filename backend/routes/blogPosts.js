@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const BlogPost = require('../models/BlogPost');
 const BlogReaction = require('../models/BlogReaction');
 const Conversation = require('../models/Conversation');
+const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -48,6 +49,25 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/authors/:id', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });
+    const user = await User.findById(req.params.id).select('displayName').lean();
+    if (!user) return res.status(404).json({ message: 'Author not found' });
+    const posts = await BlogPost.find({ ownerId: user._id })
+      .select('ownerId author title content sourceTitle sourceUrl sourceLikesCount sourceDislikesCount likesCount dislikesCount comments createdAt')
+      .sort({ createdAt: -1 });
+    res.json({
+      id: user._id.toString(),
+      displayName: user.displayName,
+      posts: await attachReactionData(posts, req.user._id),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not load author profile' });
+  }
+});
+
 router.post('/', async (req, res) => {
   try {
     const author = req.user.displayName;
@@ -81,6 +101,31 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Could not create blog post' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Blog post not found' });
+    const title = String(req.body.title || '').trim();
+    const content = String(req.body.content || '').trim();
+    const sourceTitle = String(req.body.sourceTitle || '').trim();
+    const sourceUrl = String(req.body.sourceUrl || '').trim();
+    if (!req.user.displayName || !title || !content) return res.status(400).json({ message: 'Author, title and content are required' });
+    if (title.length > 160 || content.length > 10000) return res.status(400).json({ message: 'Post is too long' });
+    if (sourceTitle.length > 300 || sourceUrl.length > 2048 || (sourceUrl && !/^https?:\/\/\S+$/i.test(sourceUrl))) {
+      return res.status(400).json({ message: 'Source must be a valid http or https URL' });
+    }
+    const post = await BlogPost.findOneAndUpdate(
+      { _id: req.params.id, ownerId: req.user._id },
+      { $set: { author: req.user.displayName, title, content, sourceTitle, sourceUrl } },
+      { new: true, runValidators: true }
+    );
+    if (!post) return res.status(404).json({ message: 'Blog post not found' });
+    res.json((await attachReactionData([post], req.user._id))[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not update blog post' });
   }
 });
 
