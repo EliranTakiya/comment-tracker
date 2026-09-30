@@ -77,6 +77,24 @@ button { cursor: pointer; }
   appearance: none;
   transform: rotate(-5deg);
 }
+
+.dashboard-sections { display: flex; flex-direction: column; gap: 0; }
+.dashboard-panel { min-width: 0; }
+.dashboard-panel.is-collapsed > section > :not(.statistics-heading),
+.dashboard-panel.is-collapsed > .progress-details { display: none; }
+.comments-dashboard-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 15px 20px; border: 1px solid var(--line); border-right: 4px solid #4c9c76; border-radius: 16px; background: var(--surface); }
+.comments-dashboard-heading h2 { margin: 0; font-size: 20px; }
+.comments-dashboard-panel.is-collapsed > :not(.comments-dashboard-heading) { display: none !important; }
+.dashboard-section-controls { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; margin-inline-start: 10px; }
+.dashboard-section-controls button { display: grid; width: 30px; height: 30px; place-items: center; padding: 0; color: var(--section-accent, var(--mint-strong)); border: 1px solid color-mix(in srgb, var(--section-accent, var(--mint-strong)) 27%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--section-tint, var(--mint)) 65%, var(--surface)); font-size: 17px; font-weight: 800; line-height: 1; }
+.dashboard-section-controls button:hover:not(:disabled) { filter: brightness(.95); transform: translateY(-1px); }
+.dashboard-section-controls button:disabled { cursor: default; opacity: .35; }
+.statistics-heading > .dashboard-section-controls { align-self: center; }
+@media (max-width: 600px) {
+  .dashboard-section-controls { gap: 3px; margin-inline-start: 5px; }
+  .dashboard-section-controls button { width: 27px; height: 27px; }
+  .comments-dashboard-heading { padding: 12px 14px; }
+}
 .brand-mark::after { position: absolute; bottom: -4px; left: 8px; width: 13px; height: 13px; border-radius: 0 0 0 3px; background: inherit; content: ''; transform: rotate(45deg); }
 .theme-picker { position: relative; flex: 0 0 66px; width: 66px; }
 .theme-menu { position: absolute; z-index: 5; top: 70px; right: 0; width: 175px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 14px 30px rgba(20, 35, 38, .18); }

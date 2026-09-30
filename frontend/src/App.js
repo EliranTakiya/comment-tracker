@@ -76,6 +76,17 @@ function App() {
   const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
+  const dashboardSectionIds = ['statistics', 'progress', 'blog', 'community-blog', 'settings', 'comments'];
+  const [dashboardOrder, setDashboardOrder] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
+      return Array.isArray(saved) && dashboardSectionIds.every(id => saved.includes(id)) ? saved : dashboardSectionIds;
+    } catch { return dashboardSectionIds; }
+  });
+  const [collapsedDashboardSections, setCollapsedDashboardSections] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('comment-tracker-collapsed-sections') || '{}'); }
+    catch { return {}; }
+  });
   const [editingRepliesId, setEditingRepliesId] = useState(null);
   const [repliesDraft, setRepliesDraft] = useState('');
   const [editingReactionsId, setEditingReactionsId] = useState(null);
@@ -96,6 +107,37 @@ function App() {
     setSuccessMessage(message);
     if (successTimerRef.current) window.clearTimeout(successTimerRef.current);
     successTimerRef.current = window.setTimeout(() => setSuccessMessage(''), 2800);
+  };
+
+  const moveDashboardSection = (sectionId, direction) => {
+    setDashboardOrder(previous => {
+      const index = previous.indexOf(sectionId);
+      const target = index + direction;
+      if (target < 0 || target >= previous.length) return previous;
+      const next = [...previous];
+      [next[index], next[target]] = [next[target], next[index]];
+      localStorage.setItem('comment-tracker-section-order', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const toggleDashboardSection = (sectionId) => {
+    setCollapsedDashboardSections(previous => {
+      const next = { ...previous, [sectionId]: !previous[sectionId] };
+      localStorage.setItem('comment-tracker-collapsed-sections', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const sectionControls = (sectionId, label) => {
+    const sectionIndex = dashboardOrder.indexOf(sectionId);
+    return <div className="dashboard-section-controls" aria-label={`ניהול אזור ${label}`}>
+      <button type="button" onClick={() => moveDashboardSection(sectionId, -1)} disabled={sectionIndex === 0} aria-label={`העבר את ${label} למעלה`} title="העבר למעלה">↑</button>
+      <button type="button" onClick={() => moveDashboardSection(sectionId, 1)} disabled={sectionIndex === dashboardOrder.length - 1} aria-label={`העבר את ${label} למטה`} title="העבר למטה">↓</button>
+      <button type="button" onClick={() => toggleDashboardSection(sectionId)} aria-expanded={!collapsedDashboardSections[sectionId]} aria-label={`${collapsedDashboardSections[sectionId] ? 'פתח' : 'סגור'} את ${label}`} title={collapsedDashboardSections[sectionId] ? 'פתח אזור' : 'סגור אזור'}>
+        {collapsedDashboardSections[sectionId] ? '＋' : '−'}
+      </button>
+    </div>;
   };
 
   useEffect(() => {
@@ -761,8 +803,10 @@ function App() {
         </div>
       </nav>
 
+      <div className="dashboard-sections">
+      <div className={`dashboard-panel ${collapsedDashboardSections.statistics ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('statistics') }}>
       <section className="statistics-section" id="statistics" aria-labelledby="statistics-title">
-        <div className="statistics-heading"><div><span className="section-kicker">המספרים שלך</span><h2 id="statistics-title">הסטטיסטיקות שלי</h2></div><span className="statistics-period">כל התקופה</span></div>
+        <div className="statistics-heading"><div><span className="section-kicker">המספרים שלך</span><h2 id="statistics-title">הסטטיסטיקות שלי</h2></div><span className="statistics-period">כל התקופה</span>{sectionControls('statistics', 'הסטטיסטיקות שלי')}</div>
         <label className="statistics-filter">סוג אתר<select value={statisticsTopicFilter} onChange={event => setStatisticsTopicFilter(event.target.value)} aria-label="סינון סטטיסטיקות לפי סוג אתר"><option value="all">כל סוגי האתרים</option>{TOPICS.map(topic => <option key={topic} value={topic}>{topic}</option>)}</select></label>
         <div className="statistics-cards">
           <article className="stat-card"><span>תגובות ששמרתי</span><strong>{statisticsConvos.length}</strong><small>{statisticsTopicFilter === 'all' ? 'בכל סוגי האתרים' : statisticsTopicFilter}</small></article>
@@ -774,9 +818,11 @@ function App() {
         </div>
         <div className="statistics-sites"><h3>איפה הגבתי הכי הרבה?</h3>{siteStats.length ? siteStats.map(([site, count]) => <div className="site-stat" key={site}><span>{site}</span><div className="site-stat-track"><i style={{ width: `${Math.max(8, count / topSiteCount * 100)}%` }} /></div><strong>{count}</strong></div>) : <p>שמרו תגובה ראשונה כדי להתחיל לצבור נתונים.</p>}</div>
       </section>
+      </div>
 
+      <div className={`dashboard-panel ${collapsedDashboardSections.progress ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('progress') }}>
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
-        <div className="statistics-heading"><div><span className="section-kicker">הדרך שלך</span><h2 id="progress-title">ההתקדמות שלי</h2></div><span className={`user-badge ${currentBadge.className}`}><span className="badge-art" aria-hidden="true">{currentBadge.icon}</span><span className="badge-copy"><strong>{currentBadge.name}</strong><small>הדרגה הנוכחית</small></span></span></div>
+        <div className="statistics-heading"><div><span className="section-kicker">הדרך שלך</span><h2 id="progress-title">ההתקדמות שלי</h2></div><span className={`user-badge ${currentBadge.className}`}><span className="badge-art" aria-hidden="true">{currentBadge.icon}</span><span className="badge-copy"><strong>{currentBadge.name}</strong><small>הדרגה הנוכחית</small></span></span>{sectionControls('progress', 'ההתקדמות שלי')}</div>
         <div className="progress-summary"><strong>{totalPoints}</strong><span>נקודות זכות</span></div>
         {nextBadge ? <><p className="next-badge-copy">עוד {nextBadge.min - totalPoints} נקודות לדרגת {nextBadge.name}</p><div className="progress-track" role="progressbar" aria-label="התקדמות לדרגה הבאה" aria-valuenow={badgeProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${badgeProgress}%` }} /></div><div className="progress-track-caption"><span>{badgeProgress}% מהדרך</span><span>{totalPoints} / {nextBadge.min} נקודות</span></div></> : <p className="next-badge-copy">הגעת לדרגה הגבוהה ביותר — כל הכבוד!</p>}
         <div className="badge-milestones">{BADGES.map((badge, index) => <div key={badge.className} className={`badge-milestone ${totalPoints >= badgeThresholds[index] ? 'earned' : ''} ${index === currentBadgeIndex ? 'current' : ''}`}><span className="badge-milestone-icon">{badge.icon}</span><strong>{badge.name}</strong><small>{badgeThresholds[index]} נקודות</small><span className="badge-milestone-state">{index === currentBadgeIndex ? 'הדרגה שלך' : totalPoints >= badgeThresholds[index] ? 'הושגה' : 'בדרך'}</span></div>)}</div>
@@ -805,9 +851,11 @@ function App() {
           </div>
         </div>
       </section>
+      </div>
 
+      <div className={`dashboard-panel ${collapsedDashboardSections.blog ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('blog') }}>
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
-        <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span></div>
+        <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span>{sectionControls('blog', 'הבלוג שלי')}</div>
         <label className="blog-search"><span>חיפוש בבלוג שלי</span><input type="search" value={myBlogSearchText} onChange={event => setMyBlogSearchText(event.target.value)} placeholder="כותרת, תוכן או תגובה..." aria-label="חיפוש בבלוג שלי" /><small>{filteredMyBlogPosts.length} מתוך {myBlogPosts.length} פוסטים</small></label>
         <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
@@ -828,17 +876,21 @@ function App() {
         </form>
         {filteredMyBlogPosts.length ? <div className="blog-post-list">{filteredMyBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{myBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>{myBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.'}</p></div>}
       </section>
+      </div>
 
+      <div className={`dashboard-panel ${collapsedDashboardSections['community-blog'] ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('community-blog') }}>
       <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
-        <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span></div>
+        <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span>{sectionControls('community-blog', 'בלוג המגיבים')}</div>
         <label className="blog-search"><span>חיפוש בבלוג המגיבים</span><input type="search" value={communityBlogSearchText} onChange={event => setCommunityBlogSearchText(event.target.value)} placeholder="כותרת, כותב, תוכן או תגובה..." aria-label="חיפוש בבלוג המגיבים" /><small>{filteredCommunityBlogPosts.length} מתוך {communityBlogPosts.length} פוסטים</small></label>
         <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
         {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
       </section>
+      </div>
 
+      <div className={`dashboard-panel ${collapsedDashboardSections.settings ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('settings') }}>
       <section className="settings-section" id="settings" aria-labelledby="settings-title">
-        <div className="statistics-heading"><div><span className="section-kicker">החשבון שלך</span><h2 id="settings-title">הגדרות</h2></div></div>
+        <div className="statistics-heading"><div><span className="section-kicker">החשבון שלך</span><h2 id="settings-title">הגדרות</h2></div>{sectionControls('settings', 'הגדרות')}</div>
         <div className="settings-grid">
           <article className="settings-card">
             <div className="settings-card-heading"><span aria-hidden="true">👤</span><div><h3>פרטי החשבון</h3><p>הפרטים שמחוברים לחשבון שלך</p></div></div>
@@ -871,8 +923,11 @@ function App() {
           </article>
         </div>
       </section>
+      </div>
 
-      <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`} id="comments">
+      <div className={`dashboard-panel comments-dashboard-panel ${collapsedDashboardSections.comments ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('comments') }} id="comments">
+      <div className="comments-dashboard-heading"><div><span className="section-kicker">הספרייה שלך</span><h2>התגובות שלי</h2></div>{sectionControls('comments', 'התגובות שלי')}</div>
+      <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`}>
         <div className="section-heading">
           <button className="form-toggle" onClick={() => setIsFormOpen(!isFormOpen)} aria-expanded={isFormOpen}>
             <span><span className="section-kicker">{editingConversationId ? 'עדכון כרטיס' : 'שמירה חדשה'}</span><h2>{editingConversationId ? 'עדכן תגובה במעקב' : 'הוסף תגובה למעקב'}</h2></span>
@@ -974,6 +1029,8 @@ function App() {
           );
         })}
       </div> : <div className="empty-state"><span>◌</span><h3>{convos.length ? 'אין תוצאות לסינון' : 'עדיין אין תגובות שמורות'}</h3><p>{convos.length ? 'נסו לשנות את הנושא או טווח התאריך.' : 'התגובה הראשונה שלכם מחכה כאן.'}</p></div>}
+      </div>
+      </div>
 
       {isPublicProfileOpen && <div className="profile-modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setIsPublicProfileOpen(false); }}>
         <section className="public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title">
