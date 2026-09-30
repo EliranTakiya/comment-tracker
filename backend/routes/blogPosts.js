@@ -90,6 +90,75 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const [users, conversationTotals, blogTotals, reactionTotals] = await Promise.all([
+      User.find().select('_id displayName avatarId').lean(),
+      Conversation.aggregate([
+        { $group: { _id: '$userId', count: { $sum: 1 }, likesCount: { $sum: '$likesCount' }, dislikesCount: { $sum: '$dislikesCount' } } },
+      ]),
+      BlogPost.aggregate([
+        { $match: { ownerId: { $ne: null } } },
+        { $group: {
+          _id: '$ownerId',
+          postsCount: { $sum: 1 },
+          commentsCount: { $sum: { $size: { $ifNull: ['$comments', []] } } },
+          likesCount: { $sum: '$likesCount' },
+          dislikesCount: { $sum: '$dislikesCount' },
+        } },
+      ]),
+      BlogReaction.aggregate([
+        { $lookup: { from: BlogPost.collection.name, localField: 'postId', foreignField: '_id', as: 'post' } },
+        { $unwind: '$post' },
+        { $match: { 'post.ownerId': { $ne: null } } },
+        { $group: {
+          _id: '$post.ownerId',
+          likesCount: { $sum: { $cond: [{ $eq: ['$type', 'like'] }, 1, 0] } },
+          dislikesCount: { $sum: { $cond: [{ $eq: ['$type', 'dislike'] }, 1, 0] } },
+        } },
+      ]),
+    ]);
+    const conversationsByUser = new Map(conversationTotals.map(item => [item._id.toString(), item]));
+    const blogsByUser = new Map(blogTotals.map(item => [item._id.toString(), item]));
+    const reactionsByUser = new Map(reactionTotals.map(item => [item._id.toString(), item]));
+    const badgeThresholds = [0, 20, 60, 150, 300];
+    const badges = [
+      { name: 'מתחיל', icon: '◯', className: 'beginner' },
+      { name: 'מגיב פעיל', icon: '✦', className: 'active' },
+      { name: 'טוקבקיסט', icon: '◆', className: 'commenter' },
+      { name: 'טוקבקיסט ותיק', icon: '★', className: 'veteran' },
+      { name: 'טוקבקיסט על', icon: '✹', className: 'super' },
+    ];
+    const leaderboard = users.map(user => {
+      const id = user._id.toString();
+      const conversations = conversationsByUser.get(id) || {};
+      const blogs = blogsByUser.get(id) || {};
+      const reactions = reactionsByUser.get(id) || {};
+      const points = Math.max(0,
+        (conversations.count || 0)
+        + (conversations.likesCount || 0) * 2
+        - (conversations.dislikesCount || 0) * 2
+        + (blogs.postsCount || 0) * 5
+        + (blogs.commentsCount || 0) * 2
+        + ((blogs.likesCount || 0) + (reactions.likesCount || 0)) * 2
+        - ((blogs.dislikesCount || 0) + (reactions.dislikesCount || 0)) * 2
+      );
+      const badgeIndex = badgeThresholds.reduce((result, threshold, index) => points >= threshold ? index : result, 0);
+      return {
+        id,
+        displayName: user.displayName,
+        avatarId: user.avatarId || 'comment-bubble',
+        points,
+        rank: badges[badgeIndex],
+      };
+    }).sort((first, second) => second.points - first.points || first.displayName.localeCompare(second.displayName, 'he'));
+    res.json(leaderboard.map((user, index) => ({ ...user, position: index + 1 })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Could not load global leaderboard' });
+  }
+});
+
 router.get('/authors/:id', async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });

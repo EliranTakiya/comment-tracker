@@ -53,6 +53,9 @@ function App() {
   const [form, setForm] = useState(emptyForm);
   const [convos, setConvos] = useState([]);
   const [blogPosts, setBlogPosts] = useState([]);
+  const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState('');
   const [copiedSourcePostId, setCopiedSourcePostId] = useState(null);
   const [blogDraft, setBlogDraft] = useState({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
   const [blogDraftSourceConversationIds, setBlogDraftSourceConversationIds] = useState([]);
@@ -71,12 +74,16 @@ function App() {
   const [searchText, setSearchText] = useState('');
   const [myBlogSearchText, setMyBlogSearchText] = useState('');
   const [communityBlogSearchText, setCommunityBlogSearchText] = useState('');
+  const [myBlogDateRange, setMyBlogDateRange] = useState({ from: '', to: '' });
+  const [myBlogAuthorFilter, setMyBlogAuthorFilter] = useState('all');
+  const [communityBlogAuthorFilter, setCommunityBlogAuthorFilter] = useState('all');
+  const [communityBlogDateRange, setCommunityBlogDateRange] = useState({ from: '', to: '' });
   const [blogSortOrder, setBlogSortOrder] = useState('newest');
   const [successMessage, setSuccessMessage] = useState('');
   const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
-  const dashboardSectionIds = ['statistics', 'progress', 'blog', 'community-blog', 'settings', 'comments'];
+  const dashboardSectionIds = ['statistics', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
   const [dashboardOrder, setDashboardOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
@@ -220,6 +227,8 @@ function App() {
     setCurrentUser(null);
     setConvos([]);
     setBlogPosts([]);
+    setGlobalLeaderboard([]);
+    setLeaderboardError('');
     setBlogDraft({ title: '', content: '', sourceTitle: '', sourceUrl: '' });
     setBlogDraftSourceConversationIds([]);
     setBlogCommentDrafts({});
@@ -306,11 +315,31 @@ function App() {
     }
   };
 
+  const loadGlobalLeaderboard = async () => {
+    setLeaderboardLoading(true);
+    setLeaderboardError('');
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/blog-posts/leaderboard`);
+      setGlobalLeaderboard(response.data);
+    } catch (err) {
+      console.error('Load global leaderboard error:', err.response?.data || err.message);
+      setLeaderboardError('לא הצלחנו לטעון את טבלת המגיבים. נסו שוב.');
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) return;
     load();
     loadBlogPosts();
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return undefined;
+    const timeout = window.setTimeout(loadGlobalLeaderboard, 250);
+    return () => window.clearTimeout(timeout);
+  }, [currentUser, convos, blogPosts]);
 
   useEffect(() => {
     if (!isPublicProfileOpen) return undefined;
@@ -646,12 +675,25 @@ function App() {
   const pointsFromCommentDislikes = totalCommentDislikes * -2;
   const myBlogPosts = currentUser ? blogPosts.filter(post => String(post.ownerId || '') === currentUser.id) : [];
   const communityBlogPosts = [...blogPosts];
+  const myBlogAuthors = [...new Set(myBlogPosts.map(post => post.author?.trim()).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'he'));
+  const blogAuthors = [...new Set(communityBlogPosts.map(post => post.author?.trim()).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'he'));
   const matchesBlogSearch = (post, search) => {
     const query = search.trim().toLocaleLowerCase();
     if (!query) return true;
     const searchableText = [post.title, post.content, post.author, post.sourceTitle, post.sourceUrl,
       ...(post.comments || []).flatMap(comment => [comment.author, comment.content])].filter(Boolean).join(' ').toLocaleLowerCase();
     return searchableText.includes(query);
+  };
+  const matchesBlogDateRange = (post, dateRange) => {
+    const createdAt = new Date(post.createdAt);
+    if (Number.isNaN(createdAt.getTime())) return false;
+    if (dateRange.from && createdAt < new Date(`${dateRange.from}T00:00:00`)) return false;
+    if (dateRange.to) {
+      const endOfSelectedDay = new Date(`${dateRange.to}T00:00:00`);
+      endOfSelectedDay.setDate(endOfSelectedDay.getDate() + 1);
+      if (createdAt >= endOfSelectedDay) return false;
+    }
+    return true;
   };
   const sortBlogPosts = posts => [...posts].sort((first, second) => {
     if (blogSortOrder === 'popular') {
@@ -662,8 +704,14 @@ function App() {
     }
     return new Date(second.createdAt) - new Date(first.createdAt);
   });
-  const filteredMyBlogPosts = sortBlogPosts(myBlogPosts.filter(post => matchesBlogSearch(post, myBlogSearchText)));
-  const filteredCommunityBlogPosts = sortBlogPosts(communityBlogPosts.filter(post => matchesBlogSearch(post, communityBlogSearchText)));
+  const filteredMyBlogPosts = sortBlogPosts(myBlogPosts.filter(post =>
+    matchesBlogSearch(post, myBlogSearchText)
+    && matchesBlogDateRange(post, myBlogDateRange)
+    && (myBlogAuthorFilter === 'all' || post.author?.trim() === myBlogAuthorFilter)));
+  const filteredCommunityBlogPosts = sortBlogPosts(communityBlogPosts.filter(post =>
+    matchesBlogSearch(post, communityBlogSearchText)
+    && matchesBlogDateRange(post, communityBlogDateRange)
+    && (communityBlogAuthorFilter === 'all' || post.author?.trim() === communityBlogAuthorFilter)));
   const blogCommentsCount = myBlogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const pointsFromBlogPosts = myBlogPosts.length * 5;
   const pointsFromBlogComments = blogCommentsCount * 2;
@@ -799,7 +847,7 @@ function App() {
           <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
         </button>
         <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
+          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
         </div>
       </nav>
 
@@ -857,6 +905,12 @@ function App() {
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span>{sectionControls('blog', 'הבלוג שלי')}</div>
         <label className="blog-search"><span>חיפוש בבלוג שלי</span><input type="search" value={myBlogSearchText} onChange={event => setMyBlogSearchText(event.target.value)} placeholder="כותרת, תוכן או תגובה..." aria-label="חיפוש בבלוג שלי" /><small>{filteredMyBlogPosts.length} מתוך {myBlogPosts.length} פוסטים</small></label>
+        <div className="blog-filter-row" aria-label="סינון פוסטים לפי כותב ותאריך">
+          <label className="blog-filter-field blog-author-filter"><span>כותב</span><select value={myBlogAuthorFilter} onChange={event => setMyBlogAuthorFilter(event.target.value)}><option value="all">כל הכינויים שלי</option>{myBlogAuthors.map(author => <option key={author} value={author}>{author}</option>)}</select></label>
+          <label className="blog-filter-field"><span>מתאריך</span><input type="date" value={myBlogDateRange.from} max={myBlogDateRange.to || undefined} onChange={event => setMyBlogDateRange(previous => ({ ...previous, from: event.target.value }))} /></label>
+          <label className="blog-filter-field"><span>עד תאריך</span><input type="date" value={myBlogDateRange.to} min={myBlogDateRange.from || undefined} onChange={event => setMyBlogDateRange(previous => ({ ...previous, to: event.target.value }))} /></label>
+          {(myBlogAuthorFilter !== 'all' || myBlogDateRange.from || myBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setMyBlogAuthorFilter('all'); setMyBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
+        </div>
         <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
         <form className={`blog-compose ${isBlogFormOpen ? 'is-open' : ''}`} onSubmit={createBlogPost}>
@@ -874,7 +928,7 @@ function App() {
           </div>
           </div>
         </form>
-        {filteredMyBlogPosts.length ? <div className="blog-post-list">{filteredMyBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{myBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>{myBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.'}</p></div>}
+        {filteredMyBlogPosts.length ? <div className="blog-post-list">{filteredMyBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{myBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>{myBlogPosts.length ? 'אפשר לשנות את החיפוש או את המסננים.' : 'פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.'}</p></div>}
       </section>
       </div>
 
@@ -882,9 +936,38 @@ function App() {
       <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span>{sectionControls('community-blog', 'בלוג המגיבים')}</div>
         <label className="blog-search"><span>חיפוש בבלוג המגיבים</span><input type="search" value={communityBlogSearchText} onChange={event => setCommunityBlogSearchText(event.target.value)} placeholder="כותרת, כותב, תוכן או תגובה..." aria-label="חיפוש בבלוג המגיבים" /><small>{filteredCommunityBlogPosts.length} מתוך {communityBlogPosts.length} פוסטים</small></label>
+        <div className="blog-filter-row" aria-label="סינון פוסטים לפי כותב ותאריך">
+          <label className="blog-filter-field blog-author-filter"><span>כותב</span><select value={communityBlogAuthorFilter} onChange={event => setCommunityBlogAuthorFilter(event.target.value)}><option value="all">כל הכותבים</option>{blogAuthors.map(author => <option key={author} value={author}>{author}</option>)}</select></label>
+          <label className="blog-filter-field"><span>מתאריך</span><input type="date" value={communityBlogDateRange.from} max={communityBlogDateRange.to || undefined} onChange={event => setCommunityBlogDateRange(previous => ({ ...previous, from: event.target.value }))} /></label>
+          <label className="blog-filter-field"><span>עד תאריך</span><input type="date" value={communityBlogDateRange.to} min={communityBlogDateRange.from || undefined} onChange={event => setCommunityBlogDateRange(previous => ({ ...previous, to: event.target.value }))} /></label>
+          {(communityBlogAuthorFilter !== 'all' || communityBlogDateRange.from || communityBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setCommunityBlogAuthorFilter('all'); setCommunityBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
+        </div>
         <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
-        {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לנסות מילת חיפוש אחרת.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
+        {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לשנות את החיפוש או את המסננים.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
+      </section>
+      </div>
+
+      <div className={`dashboard-panel ${collapsedDashboardSections.leaderboard ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('leaderboard') }}>
+      <section className="leaderboard-section" id="leaderboard" aria-labelledby="leaderboard-title">
+        <div className="statistics-heading"><div><span className="section-kicker">הקהילה שלנו</span><h2 id="leaderboard-title">טבלת מגיבים עולמית</h2></div><span className="statistics-period">{globalLeaderboard.length} מגיבים</span>{sectionControls('leaderboard', 'טבלת מגיבים עולמית')}</div>
+        <p className="leaderboard-intro">הדירוג מבוסס על נקודות ההתקדמות של כל משתמש.</p>
+        {leaderboardLoading && !globalLeaderboard.length ? <p className="leaderboard-status">טוען את דירוג המגיבים…</p>
+          : leaderboardError ? <div className="leaderboard-status is-error" role="alert">{leaderboardError}<button type="button" onClick={loadGlobalLeaderboard}>נסו שוב</button></div>
+            : globalLeaderboard.length ? <div className="leaderboard-table-wrap"><table className="leaderboard-table" aria-label="דירוג המגיבים לפי ניקוד">
+              <thead><tr><th scope="col">מקום</th><th scope="col">מגיב/ה</th><th scope="col">נקודות</th><th scope="col">דרגה</th></tr></thead>
+              <tbody>{globalLeaderboard.map(user => {
+                const avatar = AVATARS.find(item => item.id === user.avatarId) || AVATARS[0];
+                return <tr key={user.id} className={user.id === currentUser.id ? 'is-current-user' : ''}>
+                  <td className="leaderboard-position" data-label="מקום"><span>{user.position <= 3 ? ['🥇', '🥈', '🥉'][user.position - 1] : user.position}</span></td>
+                  <td className="leaderboard-user-cell" data-label="מגיב/ה"><button className="leaderboard-user-link" type="button" onClick={() => openPublicProfile(user.id)}><span className="leaderboard-avatar" aria-hidden="true">{avatar.emoji}</span><strong>{user.displayName || 'מגיב/ה'}</strong>{user.id === currentUser.id && <small>זה/זו אני</small>}</button></td>
+                  <td className="leaderboard-points" data-label="נקודות"><strong>{user.points}</strong></td>
+                  <td className="leaderboard-rank-cell" data-label="דרגה"><span className={`leaderboard-rank ${user.rank.className}`}><i aria-hidden="true">{user.rank.icon}</i>{user.rank.name}</span></td>
+                </tr>;
+              })}</tbody>
+            </table></div>
+            : <div className="leaderboard-status">עדיין אין משתמשים בדירוג.</div>}
+        <button className="leaderboard-refresh" type="button" onClick={loadGlobalLeaderboard} disabled={leaderboardLoading}>{leaderboardLoading ? 'מעדכן…' : 'רענון הדירוג'}</button>
       </section>
       </div>
 
