@@ -778,10 +778,12 @@ function App() {
     return <main className="auth-page" dir="rtl">
       <section className="auth-card">
         <span className="section-kicker">COMMENT TRACKER</span>
-        <h1>{authStatus.needsInitialOwner ? 'פתיחת החשבון הראשון' : registering ? 'יצירת חשבון' : 'ברוך שובך'}</h1>
+        <h1>{authStatus.needsInitialOwner ? 'פתיחת החשבון הראשון' : registering ? 'יצירת חשבון' : 'התחברות לחשבון'}</h1>
         <p>{authStatus.needsInitialOwner
           ? 'החשבון הראשון יקבל את התגובות והסטטיסטיקות הישנות ששמרת.'
-          : 'התחברו כדי לראות את התגובות וההתקדמות שלכם מכל מכשיר.'}</p>
+          : registering
+            ? 'צרו חשבון חדש כדי לשמור תגובות והתקדמות אישיות.'
+            : 'התחברו לחשבון קיים, או בחרו יצירת חשבון חדש אם עדיין אין לכם חשבון.'}</p>
         {authStatus.needsInitialOwner && !authStatus.setupCodeConfigured && <div className="auth-setup-help">לפני יצירת החשבון הראשון, הוסיפו ל־Environment של שרת ה־backend ב־Render את המשתנה INITIAL_OWNER_SETUP_KEY. הקוד שתבחרו ישמש פעם אחת לשיוך הנתונים הקיימים לחשבונכם.</div>}
         <form className="auth-form" onSubmit={submitAuth}>
           {registering && <label>כינוי שיוצג באתר<input required maxLength="80" autoComplete="nickname" value={authDraft.displayName} onChange={event => setAuthDraft(previous => ({ ...previous, displayName: event.target.value }))} /></label>}
@@ -794,7 +796,7 @@ function App() {
           <button className="primary-button" type="submit">{registering ? 'יצירת חשבון' : 'התחברות'}</button>
         </form>
         {!authStatus.needsInitialOwner && <button className="auth-mode-toggle" onClick={() => { setAuthError(''); setAuthMode(registering ? 'login' : 'register'); }}>
-          {registering ? 'כבר יש לך חשבון? התחברות' : 'משתמש חדש? יצירת חשבון'}
+          {registering ? 'כבר יש לך חשבון? התחברות' : 'אין לך חשבון? יצירת חשבון חדש'}
         </button>}
       </section>
       <p className="auth-credit">נבנה על ידי <strong>BeSpoke</strong></p>
