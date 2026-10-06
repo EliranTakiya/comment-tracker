@@ -140,7 +140,7 @@ router.get('/leaderboard', async (req, res) => {
       const blogs = blogsByUser.get(id) || {};
       const reactions = reactionsByUser.get(id) || {};
       const taskRewards = taskRewardsByUser.get(id) || {};
-      const points = Math.max(0,
+      const basePoints = Math.max(0,
         (conversations.count || 0)
         + (conversations.likesCount || 0) * 2
         - (conversations.dislikesCount || 0) * 2
@@ -148,8 +148,8 @@ router.get('/leaderboard', async (req, res) => {
         + (blogs.commentsCount || 0) * 2
         + ((blogs.likesCount || 0) + (reactions.likesCount || 0)) * 2
         - ((blogs.dislikesCount || 0) + (reactions.dislikesCount || 0)) * 2
-        + (taskRewards.totalPoints || 0)
       );
+      const points = basePoints + (taskRewards.totalPoints || 0);
       const badgeIndex = badgeThresholds.reduce((result, threshold, index) => points >= threshold ? index : result, 0);
       return {
         id,
@@ -195,13 +195,13 @@ router.get('/authors/:id', async (req, res) => {
       + (post.comments?.length || 0) * 2
       + (post.likesCount || 0) * 2
       - (post.dislikesCount || 0) * 2, postsWithReactions.length * 5);
-    const totalPoints = Math.max(0,
+    const basePoints = Math.max(0,
       conversations.count
       + (conversations.likesCount || 0) * 2
       - (conversations.dislikesCount || 0) * 2
       + blogPoints
-      + (taskRewardTotals[0]?.totalPoints || 0)
     );
+    const totalPoints = basePoints + (taskRewardTotals[0]?.totalPoints || 0);
     const badgeThresholds = [0, 20, 60, 150, 300];
     const badges = [
       { name: 'מתחיל', icon: '○', className: 'beginner' },

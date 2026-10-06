@@ -81,10 +81,8 @@ async function getRewardTotal(userId) {
 
 router.get('/', async (req, res) => {
   try {
-    const { periods } = await getTaskProgress(req.user._id, req.query.timeZone);
-    const currentPeriods = Object.entries(periods).map(([taskId, periodKey]) => ({ taskId, periodKey }));
     const [claims, totalPoints] = await Promise.all([
-      TaskReward.find({ userId: req.user._id, $or: currentPeriods }).select('taskId periodKey points createdAt').lean(),
+      TaskReward.find({ userId: req.user._id }).select('taskId periodKey points createdAt').sort({ createdAt: -1 }).limit(50).lean(),
       getRewardTotal(req.user._id),
     ]);
     res.json({ totalPoints, claims });

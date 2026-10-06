@@ -360,6 +360,15 @@ textarea { min-height: 96px; resize: vertical; }
 .mission-track span { display: block; height: 100%; border-radius: inherit; background: var(--section-accent); transition: width .35s ease; }
 .mission-reward { display: flex; align-items: center; gap: 5px; color: var(--section-accent); font-size: 11px; font-weight: 800; }
 .mission-reward span { color: #b27d26; }
+.task-reward-history { margin-top: 19px; padding-top: 15px; border-top: 1px solid var(--line); }
+.task-reward-history h3 { margin: 0 0 9px; font-size: 14px; }
+.task-reward-history > p { margin: 0; color: var(--muted); font-size: 12px; }
+.task-reward-history ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.task-reward-history li { display: grid; grid-template-columns: 24px minmax(0,1fr) auto auto; align-items: center; gap: 9px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--surface) 84%, var(--section-tint)); font-size: 11px; }
+.task-history-icon { color: #b27d26; font-size: 14px; }
+.task-history-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-reward-history time { color: var(--muted); white-space: nowrap; }
+.task-reward-history li strong { color: var(--section-accent); white-space: nowrap; }
 .mission-item.is-complete { border-color: color-mix(in srgb, var(--section-accent) 45%, var(--line)); }
 .mission-item.is-complete .mission-icon { color: #fff; background: var(--section-accent); }
 .tasks-note { margin: 13px 0 0; color: var(--muted); font-size: 11px; }
@@ -485,6 +494,7 @@ textarea { min-height: 96px; resize: vertical; }
 .app.theme-night .statistics-section .stat-card { border-color: var(--line); background: #24343d; }
 .app.theme-night .tasks-section { --section-tint: rgba(77,146,119,.15); }
 .app.theme-night .mission-item { background: #24343d; }
+.app.theme-night .task-reward-history li { background: #24343d; }
 .app.theme-night .tasks-streak { color: #f1b194; background: #49352f; }
 .app.theme-night .recommendations-section { --section-tint: rgba(57,127,144,.18); }
 .app.theme-night .recommendation-item { background: #24343d; }
@@ -656,6 +666,9 @@ textarea { min-height: 96px; resize: vertical; }
   .statistics-section { padding: 19px 16px; }
   .tasks-section { padding: 19px 16px; }
   .tasks-grid { grid-template-columns: 1fr; }
+  .task-reward-history li { grid-template-columns: 20px minmax(0,1fr) auto; gap: 7px; }
+  .task-reward-history time { grid-column: 2; grid-row: 2; }
+  .task-reward-history li strong { grid-column: 3; grid-row: 1 / span 2; }
   .recommendations-section { padding: 19px 16px; }
   .progress-section { padding: 19px 16px; }
   .settings-section { padding: 19px 16px; }

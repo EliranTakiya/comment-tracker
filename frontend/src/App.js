@@ -797,6 +797,7 @@ function App() {
     { id: 'streak', icon: '↗', title: 'שמרו על רצף של 7 ימים', value: activityStreak, goal: 7, rewardPoints: 25, caption: `${activityStreak} מתוך 7 ימים ברצף` },
     { id: 'milestone', icon: '◇', title: 'הגיעו ל־50 תגובות שמורות', value: convos.length, goal: 50, rewardPoints: 50, caption: `${convos.length} מתוך 50 תגובות` },
   ];
+  const taskTitleById = Object.fromEntries(missionItems.map(mission => [mission.id, mission.title]));
   useEffect(() => {
     if (!currentUser || !taskRewardsReady) return;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -831,13 +832,15 @@ function App() {
   const currentWeekStart = getLocalWeekStart(now);
   const previousWeekStart = new Date(currentWeekStart);
   previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const previousWeekEnd = new Date(now);
+  previousWeekEnd.setDate(previousWeekEnd.getDate() - 7);
   const currentWeekConvos = convos.filter(conversation => {
     const date = new Date(conversation.createdAt);
     return !Number.isNaN(date.getTime()) && date >= currentWeekStart && date <= now;
   });
   const previousWeekConvos = convos.filter(conversation => {
     const date = new Date(conversation.createdAt);
-    return !Number.isNaN(date.getTime()) && date >= previousWeekStart && date < currentWeekStart;
+    return !Number.isNaN(date.getTime()) && date >= previousWeekStart && date <= previousWeekEnd;
   });
   const siteWeekActivity = Object.values(convos.reduce((sites, conversation) => {
     const date = new Date(conversation.createdAt);
@@ -845,7 +848,7 @@ function App() {
     if (!site || Number.isNaN(date.getTime()) || date < previousWeekStart || date > now) return sites;
     const counts = sites[site] || { name: site, current: 0, previous: 0 };
     if (date >= currentWeekStart) counts.current += 1;
-    else counts.previous += 1;
+    else if (date <= previousWeekEnd) counts.previous += 1;
     sites[site] = counts;
     return sites;
   }, {}));
@@ -855,9 +858,9 @@ function App() {
   const personalRecommendations = [];
   if (previousWeekConvos.length && currentWeekConvos.length > previousWeekConvos.length) {
     const increase = Math.round(((currentWeekConvos.length - previousWeekConvos.length) / previousWeekConvos.length) * 100);
-    personalRecommendations.push({ icon: '↗', title: 'הפעילות שלך במגמת עלייה', message: `שמרת ${currentWeekConvos.length} תגובות השבוע, ${increase}% יותר מהשבוע שעבר. כדאי לשמור על הקצב.` });
+    personalRecommendations.push({ icon: '↗', title: 'הפעילות שלך במגמת עלייה', message: `שמרת ${currentWeekConvos.length} תגובות עד עכשיו, ${increase}% יותר מאותה התקופה בשבוע שעבר. כדאי לשמור על הקצב.` });
   } else if (previousWeekConvos.length && currentWeekConvos.length < previousWeekConvos.length) {
-    personalRecommendations.push({ icon: '◎', title: 'כדאי לחזור לקצב שלך', message: `שמרת ${currentWeekConvos.length} תגובות השבוע לעומת ${previousWeekConvos.length} בשבוע שעבר. יעד קטן של 2 תגובות נוספות יכול לעזור.` });
+    personalRecommendations.push({ icon: '◎', title: 'כדאי לחזור לקצב שלך', message: `שמרת ${currentWeekConvos.length} תגובות עד עכשיו לעומת ${previousWeekConvos.length} באותה התקופה בשבוע שעבר. יעד קטן של 2 תגובות נוספות יכול לעזור.` });
   } else if (currentWeekConvos.length && !previousWeekConvos.length) {
     personalRecommendations.push({ icon: '✦', title: 'השבוע התחלת לצבור פעילות', message: `שמרת ${currentWeekConvos.length} תגובות השבוע. נמשיך להשוות ככל שיצטברו נתונים.` });
   } else if (!currentWeekConvos.length) {
@@ -867,8 +870,8 @@ function App() {
   }
   if (siteToRevisit) {
     const message = siteToRevisit.current === 0
-      ? `השבוע עדיין לא שמרת תגובות באתר ${siteToRevisit.name}, שבו שמרת ${siteToRevisit.previous} בשבוע שעבר. נסה לשמור שם 2 תגובות.`
-      : `הפעילות באתר ${siteToRevisit.name} ירדה מ־${siteToRevisit.previous} ל־${siteToRevisit.current} תגובות שמורות. אולי כדאי לחזור אליו השבוע.`;
+      ? `עד עכשיו לא שמרת תגובות באתר ${siteToRevisit.name}, שבו שמרת ${siteToRevisit.previous} באותה התקופה בשבוע שעבר. נסה לשמור שם 2 תגובות.`
+      : `הפעילות באתר ${siteToRevisit.name} ירדה מ־${siteToRevisit.previous} ל־${siteToRevisit.current} תגובות שמורות בהשוואה לאותה התקופה בשבוע שעבר. אולי כדאי לחזור אליו.`;
     personalRecommendations.push({ icon: '⌖', title: 'אתר שכדאי לחזור אליו', message });
   }
 
@@ -1011,6 +1014,15 @@ function App() {
           </article>;
         })}</div>
         <p className="tasks-note">הנקודות מתווספות אוטומטית עם השלמת היעד. משימות יומיות וחודשיות מעניקות פרס מחדש בכל תקופה.</p>
+        <div className="task-reward-history" aria-labelledby="task-reward-history-title">
+          <h3 id="task-reward-history-title">היסטוריית פרסים</h3>
+          {taskRewards.claims.length ? <ul>{taskRewards.claims.map(claim => <li key={`${claim.taskId}-${claim.periodKey}`}>
+            <span className="task-history-icon" aria-hidden="true">✦</span>
+            <span className="task-history-name">{taskTitleById[claim.taskId] || 'משימה שהושלמה'}</span>
+            <time dateTime={claim.createdAt}>{new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(claim.createdAt))}</time>
+            <strong>+{claim.points} נק׳</strong>
+          </li>)}</ul> : <p>הפרסים שתקבלו על השלמת משימות יופיעו כאן.</p>}
+        </div>
       </section>
       </div>
 
