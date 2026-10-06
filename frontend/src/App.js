@@ -852,6 +852,9 @@ function App() {
     sites[site] = counts;
     return sites;
   }, {}));
+  const siteComparisonRows = [...siteWeekActivity]
+    .sort((first, second) => second.current + second.previous - first.current - first.previous)
+    .slice(0, 5);
   const siteToRevisit = siteWeekActivity
     .filter(site => site.previous > site.current)
     .sort((first, second) => (second.previous - second.current) - (first.previous - first.current))[0];
@@ -1033,6 +1036,14 @@ function App() {
           <span className="recommendation-icon" aria-hidden="true">{recommendation.icon}</span>
           <div><h3>{recommendation.title}</h3><p>{recommendation.message}</p></div>
         </article>)}</div>
+        <div className="site-comparison" aria-labelledby="site-comparison-title">
+          <div className="site-comparison-heading"><h3 id="site-comparison-title">השוואת פעילות לפי אתר</h3><span>השבוע עד עכשיו מול אותה התקופה בשבוע שעבר</span></div>
+          {siteComparisonRows.length ? <ul>{siteComparisonRows.map(site => <li key={site.name}>
+            <strong className="site-comparison-name">{site.name}</strong>
+            <span>השבוע <b>{site.current}</b></span>
+            <span>בשבוע שעבר <b>{site.previous}</b></span>
+          </li>)}</ul> : <p>אין עדיין נתוני פעילות לפי אתר לתקופה הזו. שמירת תגובות עם שם אתר תציג כאן השוואה.</p>}
+        </div>
         <p className="recommendations-note">ההמלצות מבוססות על תגובות ששמרת ועל האתרים שהיו פעילים בהם.</p>
       </section>
       </div>

@@ -379,6 +379,16 @@ textarea { min-height: 96px; resize: vertical; }
 .recommendation-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; color: var(--section-accent); border-radius: 10px; background: var(--section-tint); font-size: 17px; font-weight: 900; }
 .recommendation-item h3 { margin: 1px 0 4px; font-size: 13px; }
 .recommendation-item p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.site-comparison { margin-top: 15px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--surface) 86%, var(--section-tint)); }
+.site-comparison-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+.site-comparison-heading h3 { margin: 0; font-size: 13px; }
+.site-comparison-heading > span { color: var(--muted); font-size: 10px; }
+.site-comparison > p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.site-comparison ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.site-comparison li { display: grid; grid-template-columns: minmax(0,1fr) minmax(92px,auto) minmax(105px,auto); align-items: center; gap: 10px; padding: 8px 9px; border-radius: 8px; background: var(--surface); font-size: 11px; }
+.site-comparison-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-comparison li > span { color: var(--muted); white-space: nowrap; }
+.site-comparison li b { margin-inline-start: 4px; color: var(--section-accent); font-size: 12px; }
 .recommendations-note { margin: 12px 0 0; color: var(--muted); font-size: 11px; }
 .reaction-tools { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--muted); font-size: 13px; }
 .reaction-tools label { display: inline-flex; align-items: center; gap: 5px; }
@@ -498,6 +508,8 @@ textarea { min-height: 96px; resize: vertical; }
 .app.theme-night .tasks-streak { color: #f1b194; background: #49352f; }
 .app.theme-night .recommendations-section { --section-tint: rgba(57,127,144,.18); }
 .app.theme-night .recommendation-item { background: #24343d; }
+.app.theme-night .site-comparison { background: #24343d; }
+.app.theme-night .site-comparison li { background: #1d2a32; }
 .app.theme-night .progress-section { --section-tint: rgba(181,133,57,.14); }
 .app.theme-night .progress-track { border-color: #65563d; background: #2b3538; }
 .app.theme-night .badge-milestones::before { background: linear-gradient(90deg,#344047,#80683e,#344047); }
@@ -670,6 +682,10 @@ textarea { min-height: 96px; resize: vertical; }
   .task-reward-history time { grid-column: 2; grid-row: 2; }
   .task-reward-history li strong { grid-column: 3; grid-row: 1 / span 2; }
   .recommendations-section { padding: 19px 16px; }
+  .site-comparison { padding: 11px; }
+  .site-comparison-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .site-comparison li { grid-template-columns: minmax(0,1fr) auto; gap: 5px 8px; }
+  .site-comparison-name { grid-column: 1 / -1; }
   .progress-section { padding: 19px 16px; }
   .settings-section { padding: 19px 16px; }
   .settings-grid { grid-template-columns: 1fr; }
