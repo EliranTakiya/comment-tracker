@@ -64,6 +64,14 @@ function App() {
   const [ideaEntryKind, setIdeaEntryKind] = useState('conversation');
   const [ideaEntryTargetId, setIdeaEntryTargetId] = useState('');
   const [ideaEntryNote, setIdeaEntryNote] = useState('');
+  const [ideaLinkConversationId, setIdeaLinkConversationId] = useState('');
+  const [ideaLinkSelectedIdeaId, setIdeaLinkSelectedIdeaId] = useState('');
+  const [ideaLinkNewTitle, setIdeaLinkNewTitle] = useState('');
+  const [ideaLinkNote, setIdeaLinkNote] = useState('');
+  const [ideaLinkPostId, setIdeaLinkPostId] = useState('');
+  const [ideaLinkPostIdeaId, setIdeaLinkPostIdeaId] = useState('');
+  const [ideaLinkPostNewTitle, setIdeaLinkPostNewTitle] = useState('');
+  const [ideaLinkPostNote, setIdeaLinkPostNote] = useState('');
   const [ideaNoteDrafts, setIdeaNoteDrafts] = useState({});
   const [ideasLoading, setIdeasLoading] = useState(false);
   const [ideasError, setIdeasError] = useState('');
@@ -619,8 +627,14 @@ function App() {
     const commentDraft = blogCommentDrafts[post._id] || { content: '' };
     const isMyPost = showDelete && String(post.ownerId || '') === currentUser.id;
     return <article className="blog-post" key={post._id} style={{ '--post-avatar-emoji': JSON.stringify((AVATARS.find(avatar => avatar.id === post.avatarId) || AVATARS[0]).emoji) }}>
-      <div className="blog-post-heading"><div><h3>{post.title}</h3>{post.ownerId ? <button className="blog-post-author" onClick={() => openPublicProfile(post.ownerId)}>מאת {post.author || 'חבר/ת קהילה'}</button> : <span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span>}<span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{isMyPost && <div className="blog-post-controls"><button className="edit-blog-button" onClick={() => startBlogPostEdit(post)}>עריכת פוסט</button><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>}</div>
+      <div className="blog-post-heading"><div><h3>{post.title}</h3>{post.ownerId ? <button className="blog-post-author" onClick={() => openPublicProfile(post.ownerId)}>מאת {post.author || 'חבר/ת קהילה'}</button> : <span className="blog-post-author">מאת {post.author || 'חבר/ת קהילה'}</span>}<span className="saved-date">פורסם {new Date(post.createdAt).toLocaleDateString('he-IL')}</span></div>{isMyPost && <div className="blog-post-controls"><button className="edit-blog-button" onClick={() => startBlogPostEdit(post)}>עריכת פוסט</button><button className="card-update-button blog-idea-trigger" type="button" aria-expanded={ideaLinkPostId === post._id} onClick={() => ideaLinkPostId === post._id ? setIdeaLinkPostId('') : startIdeaLinkForPost(post)}>שייך לרעיון</button><button className="delete-button" onClick={() => deleteBlogPost(post)}>מחיקת פוסט</button></div>}</div>
       <p className="blog-post-content">{post.content}</p>
+      {ideaLinkPostId === post._id && isMyPost && <form className="comment-idea-link-form blog-idea-link-form" onSubmit={event => ideas.length ? linkBlogPostToIdea(event, post) : createIdeaAndLinkBlogPost(event, post)}>
+        {ideas.length ? <label><span>בחירת רעיון</span><select required value={ideaLinkPostIdeaId} onChange={event => setIdeaLinkPostIdeaId(event.target.value)}><option value="">בחרו רעיון</option>{ideas.map(idea => <option key={idea._id} value={idea._id}>{idea.title}</option>)}</select></label>
+          : <label><span>שם הרעיון הראשון</span><input required maxLength="100" value={ideaLinkPostNewTitle} onChange={event => setIdeaLinkPostNewTitle(event.target.value)} placeholder="למשל: תחבורה ציבורית בשבת" /></label>}
+        <label className="comment-idea-note"><span>הערה אישית <small>פרטית לך בלבד</small></span><textarea maxLength="500" rows="2" value={ideaLinkPostNote} onChange={event => setIdeaLinkPostNote(event.target.value)} placeholder="מה חשבת על הרעיון כשכתבת את הפוסט? (לא חובה)" /></label>
+        <div className="comment-idea-form-actions"><button className="idea-add-button" type="submit" disabled={ideas.length ? !ideaLinkPostIdeaId : !ideaLinkPostNewTitle.trim()}>{ideas.length ? 'הוסף למסע הרעיון' : 'צור רעיון והוסף פוסט'}</button><button className="comment-idea-cancel" type="button" onClick={() => setIdeaLinkPostId('')}>ביטול</button></div>
+      </form>}
       {post.sourceUrl && <a className="blog-source-link" href={post.sourceUrl} target="_blank" rel="noreferrer" title="התוכן יועתק כדי שיהיה קל למצוא אותו בחיפוש בתוך הכתבה" onClick={() => copyPostBeforeOpeningSource(post)}>{copiedSourcePostId === post._id ? '✓ התוכן הועתק — חפשו אותו בכתבה' : `↗ ${post.sourceTitle || 'לכתבה המקורית'}`}</a>}
       {(post.sourceLikesCount > 0 || post.sourceDislikesCount > 0) && <div className="blog-original-metrics" aria-label="לייקים ודיסלייקים של התגובה המקורית, לתצוגה בלבד">
         <span className="blog-original-caption">לתגובה המקורית</span>
@@ -718,6 +732,114 @@ function App() {
     });
     setIsFormOpen(true);
     document.querySelector('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const cancelConversationEdit = () => {
+    setEditingConversationId(null);
+    setForm(emptyForm);
+    setIsFormOpen(false);
+  };
+
+  const startIdeaLink = (conversation) => {
+    setIdeaLinkConversationId(conversation._id);
+    setIdeaLinkSelectedIdeaId(selectedIdeaId || ideas[0]?._id || '');
+    setIdeaLinkNewTitle('');
+    setIdeaLinkNote('');
+  };
+
+  const linkConversationToIdea = async (event, conversation) => {
+    event.preventDefault();
+    if (!ideaLinkSelectedIdeaId) return;
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/ideas/${ideaLinkSelectedIdeaId}/entries`, {
+        kind: 'conversation',
+        targetId: conversation._id,
+        note: ideaLinkNote,
+      });
+      setIdeas(previous => previous.map(idea => idea._id === response.data._id ? response.data : idea));
+      setSelectedIdeaId(response.data._id);
+      setIdeaLinkConversationId('');
+      setIdeaLinkNote('');
+      showSuccess('התגובה וההערה נוספו למסע הרעיון');
+    } catch (err) {
+      console.error('Link saved comment to idea error:', err.response?.data || err.message);
+      const message = err.response?.status === 409 ? 'התגובה כבר משויכת לרעיון הזה.' : err.response?.data?.message || 'שיוך התגובה לרעיון נכשל.';
+      setIdeasError(message);
+      showSuccess(message);
+    }
+  };
+
+  const createIdeaAndLinkConversation = async (event, conversation) => {
+    event.preventDefault();
+    const title = ideaLinkNewTitle.trim();
+    if (!title) return;
+    try {
+      const ideaResponse = await axios.post(`${API_BASE_URL}/api/ideas`, { title });
+      const entryResponse = await axios.post(`${API_BASE_URL}/api/ideas/${ideaResponse.data._id}/entries`, {
+        kind: 'conversation',
+        targetId: conversation._id,
+        note: ideaLinkNote,
+      });
+      setIdeas(previous => [entryResponse.data, ...previous]);
+      setSelectedIdeaId(entryResponse.data._id);
+      setIdeaLinkConversationId('');
+      setIdeaLinkNewTitle('');
+      setIdeaLinkNote('');
+      showSuccess('הרעיון נוצר והתגובה נוספה למסע');
+    } catch (err) {
+      console.error('Create idea from saved comment error:', err.response?.data || err.message);
+      showSuccess(err.response?.data?.message || 'יצירת הרעיון נכשלה. נסו שוב.');
+    }
+  };
+
+  const startIdeaLinkForPost = (post) => {
+    setIdeaLinkPostId(post._id);
+    setIdeaLinkPostIdeaId(selectedIdeaId || ideas[0]?._id || '');
+    setIdeaLinkPostNewTitle('');
+    setIdeaLinkPostNote('');
+  };
+
+  const linkBlogPostToIdea = async (event, post) => {
+    event.preventDefault();
+    if (!ideaLinkPostIdeaId) return;
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/ideas/${ideaLinkPostIdeaId}/entries`, {
+        kind: 'blogPost',
+        targetId: post._id,
+        note: ideaLinkPostNote,
+      });
+      setIdeas(previous => previous.map(idea => idea._id === response.data._id ? response.data : idea));
+      setSelectedIdeaId(response.data._id);
+      setIdeaLinkPostId('');
+      setIdeaLinkPostNote('');
+      showSuccess('הפוסט וההערה נוספו למסע הרעיון');
+    } catch (err) {
+      console.error('Link blog post to idea error:', err.response?.data || err.message);
+      showSuccess(err.response?.status === 409 ? 'הפוסט כבר משויך לרעיון הזה.' : err.response?.data?.message || 'שיוך הפוסט לרעיון נכשל.');
+    }
+  };
+
+  const createIdeaAndLinkBlogPost = async (event, post) => {
+    event.preventDefault();
+    const title = ideaLinkPostNewTitle.trim();
+    if (!title) return;
+    try {
+      const ideaResponse = await axios.post(`${API_BASE_URL}/api/ideas`, { title });
+      const entryResponse = await axios.post(`${API_BASE_URL}/api/ideas/${ideaResponse.data._id}/entries`, {
+        kind: 'blogPost',
+        targetId: post._id,
+        note: ideaLinkPostNote,
+      });
+      setIdeas(previous => [entryResponse.data, ...previous]);
+      setSelectedIdeaId(entryResponse.data._id);
+      setIdeaLinkPostId('');
+      setIdeaLinkPostNewTitle('');
+      setIdeaLinkPostNote('');
+      showSuccess('הרעיון נוצר והפוסט נוסף למסע');
+    } catch (err) {
+      console.error('Create idea from blog post error:', err.response?.data || err.message);
+      showSuccess(err.response?.data?.message || 'יצירת הרעיון נכשלה. נסו שוב.');
+    }
   };
 
   const deleteComment = async (conversation) => {
@@ -1454,7 +1576,10 @@ function App() {
           </select></label>
           <label className="input-field"><span>מזהה התגובה:</span><input placeholder={editingConversationId ? 'אופציונלי' : 'מזהה התגובה (אופציונלי)'} value={form.commentId} onChange={e => setForm({ ...form, commentId: e.target.value })} /></label>
           </div>
-          <button className="primary-button" onClick={submit}>{editingConversationId ? 'שמור עדכון' : 'שמור תגובה'} <span>←</span></button>
+          <div className="conversation-form-actions">
+            <button className="primary-button" onClick={submit}>{editingConversationId ? 'שמור עדכון' : 'שמור תגובה'} <span>←</span></button>
+            {editingConversationId && <button className="conversation-edit-cancel" type="button" onClick={cancelConversationEdit}>ביטול עריכה</button>}
+          </div>
         </div>
       </section>
 
@@ -1522,6 +1647,7 @@ function App() {
                 <button className="jump-link" onClick={() => { navigator.clipboard.writeText(conversation.yourComment || ''); window.open(`${conversation.siteUrl}#comment-${conversation.commentId}`, '_blank'); }}>פתח וחפש ↗</button>
                 <div className="response-tools">
                   <button className="card-update-button" title="סמן קטע מהתגובה כדי להוסיף רק אותו; אחרת תתווסף כל התגובה" onMouseDown={event => event.preventDefault()} onClick={() => addSavedCommentToBlog(conversation)}>הוסף לבלוג</button>
+                  <button className="card-update-button idea-link-trigger" type="button" aria-expanded={ideaLinkConversationId === conversation._id} onClick={() => ideaLinkConversationId === conversation._id ? setIdeaLinkConversationId('') : startIdeaLink(conversation)}>שייך לרעיון</button>
                   <button className="card-update-button" onClick={() => startConversationEdit(conversation)}>עדכן כרטיס</button>
                   <div className="replies-count">
                     <span>הגיבו לי:</span>
@@ -1533,6 +1659,12 @@ function App() {
                   <button className="delete-button" onClick={() => deleteComment(conversation)}>מחק</button>
                 </div>
               </div>
+              {ideaLinkConversationId === conversation._id && <form className="comment-idea-link-form" onSubmit={event => ideas.length ? linkConversationToIdea(event, conversation) : createIdeaAndLinkConversation(event, conversation)}>
+                {ideas.length ? <label><span>בחירת רעיון</span><select required value={ideaLinkSelectedIdeaId} onChange={event => setIdeaLinkSelectedIdeaId(event.target.value)}><option value="">בחרו רעיון</option>{ideas.map(idea => <option key={idea._id} value={idea._id}>{idea.title}</option>)}</select></label>
+                  : <label><span>שם הרעיון הראשון</span><input required maxLength="100" value={ideaLinkNewTitle} onChange={event => setIdeaLinkNewTitle(event.target.value)} placeholder="למשל: תחבורה ציבורית בשבת" /> </label>}
+                <label className="comment-idea-note"><span>הערה אישית <small>פרטית לך בלבד</small></span><textarea maxLength="500" rows="2" value={ideaLinkNote} onChange={event => setIdeaLinkNote(event.target.value)} placeholder="מה חשבת על הרעיון כשכתבת את התגובה? (לא חובה)" /></label>
+                <div className="comment-idea-form-actions"><button className="idea-add-button" type="submit" disabled={ideas.length ? !ideaLinkSelectedIdeaId : !ideaLinkNewTitle.trim()}>{ideas.length ? 'הוסף למסע הרעיון' : 'צור רעיון והוסף תגובה'}</button><button className="comment-idea-cancel" type="button" onClick={() => setIdeaLinkConversationId('')}>ביטול</button></div>
+              </form>}
             </article>
           );
         })}
