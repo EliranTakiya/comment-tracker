@@ -4,6 +4,7 @@ const BlogPost = require('../models/BlogPost');
 const BlogReaction = require('../models/BlogReaction');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const TaskReward = require('../models/TaskReward');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -92,7 +93,7 @@ router.get('/', async (req, res) => {
 
 router.get('/leaderboard', async (req, res) => {
   try {
-    const [users, conversationTotals, blogTotals, reactionTotals] = await Promise.all([
+    const [users, conversationTotals, blogTotals, reactionTotals, taskRewardTotals] = await Promise.all([
       User.find().select('_id displayName avatarId').lean(),
       Conversation.aggregate([
         { $group: { _id: '$userId', count: { $sum: 1 }, likesCount: { $sum: '$likesCount' }, dislikesCount: { $sum: '$dislikesCount' } } },
@@ -117,10 +118,14 @@ router.get('/leaderboard', async (req, res) => {
           dislikesCount: { $sum: { $cond: [{ $eq: ['$type', 'dislike'] }, 1, 0] } },
         } },
       ]),
+      TaskReward.aggregate([
+        { $group: { _id: '$userId', totalPoints: { $sum: '$points' } } },
+      ]),
     ]);
     const conversationsByUser = new Map(conversationTotals.map(item => [item._id.toString(), item]));
     const blogsByUser = new Map(blogTotals.map(item => [item._id.toString(), item]));
     const reactionsByUser = new Map(reactionTotals.map(item => [item._id.toString(), item]));
+    const taskRewardsByUser = new Map(taskRewardTotals.map(item => [item._id.toString(), item]));
     const badgeThresholds = [0, 20, 60, 150, 300];
     const badges = [
       { name: 'מתחיל', icon: '◯', className: 'beginner' },
@@ -134,6 +139,7 @@ router.get('/leaderboard', async (req, res) => {
       const conversations = conversationsByUser.get(id) || {};
       const blogs = blogsByUser.get(id) || {};
       const reactions = reactionsByUser.get(id) || {};
+      const taskRewards = taskRewardsByUser.get(id) || {};
       const points = Math.max(0,
         (conversations.count || 0)
         + (conversations.likesCount || 0) * 2
@@ -142,6 +148,7 @@ router.get('/leaderboard', async (req, res) => {
         + (blogs.commentsCount || 0) * 2
         + ((blogs.likesCount || 0) + (reactions.likesCount || 0)) * 2
         - ((blogs.dislikesCount || 0) + (reactions.dislikesCount || 0)) * 2
+        + (taskRewards.totalPoints || 0)
       );
       const badgeIndex = badgeThresholds.reduce((result, threshold, index) => points >= threshold ? index : result, 0);
       return {
@@ -164,7 +171,7 @@ router.get('/authors/:id', async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });
     const user = await User.findById(req.params.id).select('displayName avatarId createdAt').lean();
     if (!user) return res.status(404).json({ message: 'Author not found' });
-    const [posts, conversationTotals] = await Promise.all([
+    const [posts, conversationTotals, taskRewardTotals] = await Promise.all([
       BlogPost.find({ ownerId: user._id })
       .select('ownerId author title content sourceTitle sourceUrl sourceConversationIds sourceLikesCount sourceDislikesCount likesCount dislikesCount comments createdAt')
       .sort({ createdAt: -1 }),
@@ -176,6 +183,10 @@ router.get('/authors/:id', async (req, res) => {
           likesCount: { $sum: '$likesCount' },
           dislikesCount: { $sum: '$dislikesCount' },
         } },
+      ]),
+      TaskReward.aggregate([
+        { $match: { userId: user._id } },
+        { $group: { _id: null, totalPoints: { $sum: '$points' } } },
       ]),
     ]);
     const postsWithReactions = await attachReactionData(posts, req.user._id);
@@ -189,6 +200,7 @@ router.get('/authors/:id', async (req, res) => {
       + (conversations.likesCount || 0) * 2
       - (conversations.dislikesCount || 0) * 2
       + blogPoints
+      + (taskRewardTotals[0]?.totalPoints || 0)
     );
     const badgeThresholds = [0, 20, 60, 150, 300];
     const badges = [

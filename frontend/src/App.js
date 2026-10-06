@@ -57,6 +57,9 @@ function App() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [convos, setConvos] = useState([]);
+  const [taskRewards, setTaskRewards] = useState({ totalPoints: 0, claims: [] });
+  const [taskRewardsReady, setTaskRewardsReady] = useState(false);
+  const taskRewardRequestsRef = useRef(new Set());
   const [blogPosts, setBlogPosts] = useState([]);
   const [globalLeaderboard, setGlobalLeaderboard] = useState([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
@@ -202,6 +205,24 @@ function App() {
     setNickname(currentUser.displayName);
     setTheme(currentUser.theme || 'day');
     setNicknameDraft(currentUser.displayName);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setTaskRewards({ totalPoints: 0, claims: [] });
+      setTaskRewardsReady(false);
+      return undefined;
+    }
+    let active = true;
+    setTaskRewardsReady(false);
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    axios.get(`${API_BASE_URL}/api/task-rewards`, { params: { timeZone } })
+      .then(response => {
+        if (active) setTaskRewards(response.data);
+      })
+      .catch(err => console.error('Load task rewards error:', err.response?.data || err.message))
+      .finally(() => { if (active) setTaskRewardsReady(true); });
+    return () => { active = false; };
   }, [currentUser]);
 
   const submitAuth = async (event) => {
@@ -726,7 +747,8 @@ function App() {
   const pointsFromBlogDislikes = totalBlogDislikes * -2;
   const rawPoints = pointsFromSavedComments + pointsFromCommentLikes + pointsFromCommentDislikes
     + pointsFromBlogPosts + pointsFromBlogComments + pointsFromBlogLikes + pointsFromBlogDislikes;
-  const totalPoints = Math.max(0, rawPoints);
+  const taskRewardPoints = taskRewards.totalPoints || 0;
+  const totalPoints = Math.max(0, rawPoints) + taskRewardPoints;
   const badgeThresholds = [0, 20, 60, 150, 300];
   const currentBadgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
   const currentBadge = BADGES[currentBadgeIndex];
@@ -770,11 +792,42 @@ function App() {
   let activityStreak = 0;
   for (let day = new Date(streakAnchor); activityDates.has(getLocalDateKey(day)); day.setDate(day.getDate() - 1)) activityStreak += 1;
   const missionItems = [
-    { id: 'daily', icon: '◷', title: 'שמרו 3 תגובות היום', value: todaySavedComments, goal: 3, caption: `${todaySavedComments} מתוך 3` },
-    { id: 'monthly', icon: '▦', title: 'שמרו 20 תגובות החודש', value: monthSavedComments, goal: 20, caption: `${monthSavedComments} מתוך 20 החודש` },
-    { id: 'streak', icon: '↗', title: 'שמרו על רצף של 7 ימים', value: activityStreak, goal: 7, caption: `${activityStreak} מתוך 7 ימים ברצף` },
-    { id: 'milestone', icon: '◇', title: 'הגיעו ל־50 תגובות שמורות', value: convos.length, goal: 50, caption: `${convos.length} מתוך 50 תגובות` },
+    { id: 'daily', icon: '◷', title: 'שמרו 3 תגובות היום', value: todaySavedComments, goal: 3, rewardPoints: 5, caption: `${todaySavedComments} מתוך 3` },
+    { id: 'monthly', icon: '▦', title: 'שמרו 20 תגובות החודש', value: monthSavedComments, goal: 20, rewardPoints: 20, caption: `${monthSavedComments} מתוך 20 החודש` },
+    { id: 'streak', icon: '↗', title: 'שמרו על רצף של 7 ימים', value: activityStreak, goal: 7, rewardPoints: 25, caption: `${activityStreak} מתוך 7 ימים ברצף` },
+    { id: 'milestone', icon: '◇', title: 'הגיעו ל־50 תגובות שמורות', value: convos.length, goal: 50, rewardPoints: 50, caption: `${convos.length} מתוך 50 תגובות` },
   ];
+  useEffect(() => {
+    if (!currentUser || !taskRewardsReady) return;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const currentMonthKey = todayKey.slice(0, 7);
+    const missionsToCheck = [
+      { id: 'daily', value: todaySavedComments, goal: 3, rewardPoints: 5 },
+      { id: 'monthly', value: monthSavedComments, goal: 20, rewardPoints: 20 },
+      { id: 'streak', value: activityStreak, goal: 7, rewardPoints: 25 },
+      { id: 'milestone', value: convos.length, goal: 50, rewardPoints: 50 },
+    ];
+    missionsToCheck.filter(mission => mission.value >= mission.goal).forEach(mission => {
+      const periodKey = mission.id === 'daily' ? todayKey : mission.id === 'milestone' ? 'once' : currentMonthKey;
+      const alreadyClaimed = taskRewards.claims.some(claim => claim.taskId === mission.id && claim.periodKey === periodKey);
+      const requestKey = `${mission.id}:${periodKey}`;
+      if (alreadyClaimed || taskRewardRequestsRef.current.has(requestKey)) return;
+      taskRewardRequestsRef.current.add(requestKey);
+      axios.post(`${API_BASE_URL}/api/task-rewards/claim`, { taskId: mission.id, timeZone })
+        .then(response => {
+          setTaskRewards(previous => ({
+            totalPoints: response.data.totalPoints,
+            claims: [...previous.claims.filter(claim => !(claim.taskId === mission.id && claim.periodKey === periodKey)), response.data.claim],
+          }));
+          if (response.data.newlyAwarded) {
+            showSuccess(`קיבלת ${mission.rewardPoints} נקודות על השלמת המשימה!`);
+            loadGlobalLeaderboard();
+          }
+        })
+        .catch(err => console.error('Claim task reward error:', err.response?.data || err.message))
+        .finally(() => taskRewardRequestsRef.current.delete(requestKey));
+    });
+  }, [currentUser, taskRewardsReady, taskRewards.claims, todayKey, todaySavedComments, monthSavedComments, activityStreak, convos.length]);
   const currentWeekStart = getLocalWeekStart(now);
   const previousWeekStart = new Date(currentWeekStart);
   previousWeekStart.setDate(previousWeekStart.getDate() - 7);
@@ -949,12 +1002,15 @@ function App() {
         <div className="tasks-grid">{missionItems.map(mission => {
           const progress = Math.min(100, Math.round((mission.value / mission.goal) * 100));
           const complete = mission.value >= mission.goal;
+          const periodKey = mission.id === 'daily' ? todayKey : mission.id === 'milestone' ? 'once' : monthKey;
+          const claimed = taskRewards.claims.some(claim => claim.taskId === mission.id && claim.periodKey === periodKey);
           return <article className={`mission-item ${complete ? 'is-complete' : ''}`} key={mission.id}>
-            <div className="mission-heading"><span className="mission-icon" aria-hidden="true">{complete ? '✓' : mission.icon}</span><div><h3>{mission.title}</h3><p>{complete ? 'היעד הושלם' : mission.caption}</p></div></div>
+            <div className="mission-heading"><span className="mission-icon" aria-hidden="true">{complete ? '✓' : mission.icon}</span><div><h3>{mission.title}</h3><p>{claimed ? `היעד הושלם · קיבלת ${mission.rewardPoints} נקודות` : complete ? 'היעד הושלם · מעדכן את הפרס...' : mission.caption}</p></div></div>
             <div className="mission-track" role="progressbar" aria-label={mission.title} aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${progress}%` }} /></div>
+            <div className="mission-reward"><span aria-hidden="true">✦</span>{claimed ? `הפרס התקבל: ${mission.rewardPoints} נקודות` : `פרס: ${mission.rewardPoints} נקודות`}</div>
           </article>;
         })}</div>
-        <p className="tasks-note">המשימות מתקדמות לפי תגובות ששמרת במערכת.</p>
+        <p className="tasks-note">הנקודות מתווספות אוטומטית עם השלמת היעד. משימות יומיות וחודשיות מעניקות פרס מחדש בכל תקופה.</p>
       </section>
       </div>
 
@@ -983,6 +1039,7 @@ function App() {
           <div><span>תגובות ששמרתי · נקודה לכל תגובה</span><strong>+{pointsFromSavedComments}</strong></div>
           <div><span>לייקים לתגובות שלי · 2 נקודות לכל לייק</span><strong>+{pointsFromCommentLikes}</strong></div>
           <div><span>דיסלייקים לתגובות שלי · מינוס 2 לכל דיסלייק</span><strong>{pointsFromCommentDislikes}</strong></div>
+          <div><span>פרסים על השלמת משימות</span><strong>+{taskRewardPoints}</strong></div>
           <div><span>פוסטים ששיתפתי בבלוג · 5 נקודות לפוסט</span><strong>+{pointsFromBlogPosts}</strong></div>
           <div><span>תגובות שקיבלתי בבלוג · 2 נקודות לכל תגובה</span><strong>+{pointsFromBlogComments}</strong></div>
           <div><span>לייקים חיוביים בבלוג · 2 נקודות לכל לייק</span><strong>+{pointsFromBlogLikes}</strong></div>

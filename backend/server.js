@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const conversationRoutes = require('./routes/conversations');
 const profileStatsRoutes = require('./routes/profileStats');
 const blogPostRoutes = require('./routes/blogPosts');
+const taskRewardRoutes = require('./routes/taskRewards');
 const app = express();
 app.set('trust proxy', 1);
 // Parse JSON bodies (for POST, PUT, DELETE, etc.)
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/profile-stats', profileStatsRoutes);
 app.use('/api/blog-posts', blogPostRoutes);
+app.use('/api/task-rewards', taskRewardRoutes);
 // Listen on Render PORT or local 5000
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));

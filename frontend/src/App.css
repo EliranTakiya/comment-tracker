@@ -358,6 +358,8 @@ textarea { min-height: 96px; resize: vertical; }
 .mission-heading p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
 .mission-track { height: 8px; overflow: hidden; border-radius: 99px; background: color-mix(in srgb, var(--section-tint) 65%, var(--line)); }
 .mission-track span { display: block; height: 100%; border-radius: inherit; background: var(--section-accent); transition: width .35s ease; }
+.mission-reward { display: flex; align-items: center; gap: 5px; color: var(--section-accent); font-size: 11px; font-weight: 800; }
+.mission-reward span { color: #b27d26; }
 .mission-item.is-complete { border-color: color-mix(in srgb, var(--section-accent) 45%, var(--line)); }
 .mission-item.is-complete .mission-icon { color: #fff; background: var(--section-accent); }
 .tasks-note { margin: 13px 0 0; color: var(--muted); font-size: 11px; }
