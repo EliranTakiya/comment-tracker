@@ -58,6 +58,15 @@ function App() {
   const [showInstructions, setShowInstructions] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [convos, setConvos] = useState([]);
+  const [ideas, setIdeas] = useState([]);
+  const [selectedIdeaId, setSelectedIdeaId] = useState('');
+  const [ideaTitleDraft, setIdeaTitleDraft] = useState('');
+  const [ideaEntryKind, setIdeaEntryKind] = useState('conversation');
+  const [ideaEntryTargetId, setIdeaEntryTargetId] = useState('');
+  const [ideaEntryNote, setIdeaEntryNote] = useState('');
+  const [ideaNoteDrafts, setIdeaNoteDrafts] = useState({});
+  const [ideasLoading, setIdeasLoading] = useState(false);
+  const [ideasError, setIdeasError] = useState('');
   const [taskRewards, setTaskRewards] = useState({ totalPoints: 0, claims: [] });
   const [taskRewardsReady, setTaskRewardsReady] = useState(false);
   const taskRewardRequestsRef = useRef(new Set());
@@ -96,7 +105,7 @@ function App() {
   const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
-  const dashboardSectionIds = ['statistics', 'tasks', 'recommendations', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
+  const dashboardSectionIds = ['statistics', 'tasks', 'ideas', 'recommendations', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
   const [dashboardOrder, setDashboardOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
@@ -230,6 +239,31 @@ function App() {
     return () => { active = false; };
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!currentUser) {
+      setIdeas([]);
+      setSelectedIdeaId('');
+      setIdeasLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setIdeasLoading(true);
+    setIdeasError('');
+    axios.get(`${API_BASE_URL}/api/ideas`)
+      .then(response => {
+        if (!active) return;
+        const loadedIdeas = response.data;
+        setIdeas(loadedIdeas);
+        setSelectedIdeaId(previous => loadedIdeas.some(idea => idea._id === previous) ? previous : loadedIdeas[0]?._id || '');
+      })
+      .catch(err => {
+        console.error('Load ideas error:', err.response?.data || err.message);
+        if (active) setIdeasError('לא הצלחנו לטעון את מסע הרעיונות. נסו לרענן.');
+      })
+      .finally(() => { if (active) setIdeasLoading(false); });
+    return () => { active = false; };
+  }, [currentUser]);
+
   const submitAuth = async (event) => {
     event.preventDefault();
     setAuthError('');
@@ -257,6 +291,8 @@ function App() {
     catch (err) { console.error('Sign out error:', err.response?.data || err.message); }
     setCurrentUser(null);
     setConvos([]);
+    setIdeas([]);
+    setSelectedIdeaId('');
     setBlogPosts([]);
     setGlobalLeaderboard([]);
     setLeaderboardError('');
@@ -318,6 +354,84 @@ function App() {
   const load = async () => {
     const res = await axios.get(`${API_BASE_URL}/api/conversations`);
     setConvos(res.data);
+  };
+
+  const createIdea = async (event) => {
+    event.preventDefault();
+    const title = ideaTitleDraft.trim();
+    if (!title) return;
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/ideas`, { title });
+      setIdeas(previous => [response.data, ...previous]);
+      setSelectedIdeaId(response.data._id);
+      setIdeaTitleDraft('');
+      setIdeasError('');
+      showSuccess('הרעיון נוצר');
+    } catch (err) {
+      console.error('Create idea error:', err.response?.data || err.message);
+      setIdeasError(err.response?.data?.message || 'יצירת הרעיון נכשלה. נסו שוב.');
+    }
+  };
+
+  const deleteIdea = async (idea) => {
+    if (!window.confirm(`למחוק את הרעיון "${idea.title}" ואת ציר הזמן שלו?`)) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/api/ideas/${idea._id}`);
+      setIdeas(previous => previous.filter(item => item._id !== idea._id));
+      setSelectedIdeaId(previous => previous === idea._id ? (ideas.find(item => item._id !== idea._id)?._id || '') : previous);
+      showSuccess('הרעיון נמחק');
+    } catch (err) {
+      console.error('Delete idea error:', err.response?.data || err.message);
+      setIdeasError('מחיקת הרעיון נכשלה. נסו שוב.');
+    }
+  };
+
+  const addIdeaEntry = async (event) => {
+    event.preventDefault();
+    if (!selectedIdeaId || !ideaEntryTargetId) return;
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/ideas/${selectedIdeaId}/entries`, {
+        kind: ideaEntryKind,
+        targetId: ideaEntryTargetId,
+        note: ideaEntryNote,
+      });
+      setIdeas(previous => previous.map(idea => idea._id === response.data._id ? response.data : idea));
+      setIdeaEntryTargetId('');
+      setIdeaEntryNote('');
+      showSuccess('הפריט צורף למסע הרעיון');
+    } catch (err) {
+      console.error('Add idea entry error:', err.response?.data || err.message);
+      setIdeasError(err.response?.data?.message || 'צירוף הפריט נכשל. נסו שוב.');
+    }
+  };
+
+  const saveIdeaNote = async (idea, entry, note) => {
+    const nextNote = note.trim();
+    if (nextNote === (entry.note || '')) return;
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/ideas/${idea._id}/entries/${entry._id}`, { note: nextNote });
+      setIdeas(previous => previous.map(item => item._id === response.data._id ? response.data : item));
+      setIdeaNoteDrafts(previous => {
+        const next = { ...previous };
+        delete next[`${idea._id}:${entry._id}`];
+        return next;
+      });
+      showSuccess('ההערה האישית נשמרה');
+    } catch (err) {
+      console.error('Save idea note error:', err.response?.data || err.message);
+      setIdeasError('שמירת ההערה נכשלה. נסו שוב.');
+    }
+  };
+
+  const removeIdeaEntry = async (idea, entry) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/api/ideas/${idea._id}/entries/${entry._id}`);
+      setIdeas(previous => previous.map(item => item._id === response.data._id ? response.data : item));
+      showSuccess('הפריט הוסר מציר הזמן');
+    } catch (err) {
+      console.error('Remove idea entry error:', err.response?.data || err.message);
+      setIdeasError('הסרת הפריט נכשלה. נסו שוב.');
+    }
   };
 
   const syncBlogSourceMetrics = (changedConversation, removed = false) => {
@@ -717,6 +831,13 @@ function App() {
   const pointsFromCommentDislikes = totalCommentDislikes * -2;
   const myBlogPosts = currentUser ? blogPosts.filter(post => String(post.ownerId || '') === currentUser.id) : [];
   const communityBlogPosts = [...blogPosts];
+  const selectedIdea = ideas.find(idea => idea._id === selectedIdeaId) || null;
+  const ideaTimelineEntries = selectedIdea ? selectedIdea.entries.map(entry => {
+    const source = entry.kind === 'conversation'
+      ? convos.find(conversation => String(conversation._id) === String(entry.targetId))
+      : myBlogPosts.find(post => String(post._id) === String(entry.targetId));
+    return { ...entry, source, sortDate: new Date(source?.createdAt || entry.addedAt) };
+  }).sort((first, second) => first.sortDate - second.sortDate) : [];
   const myBlogAuthors = [...new Set(myBlogPosts.map(post => post.author?.trim()).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'he'));
   const blogAuthors = [...new Set(communityBlogPosts.map(post => post.author?.trim()).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'he'));
   const matchesBlogSearch = (post, search) => {
@@ -1046,7 +1167,7 @@ function App() {
           <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
         </button>
         <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#tasks" onClick={event => navigateToSection(event, 'tasks')}>המשימות שלי</a><a href="#recommendations" onClick={event => navigateToSection(event, 'recommendations')}>המלצות אישיות</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
+          <a className="nav-home" href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a className="nav-comments" href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a className="nav-statistics" href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a className="nav-tasks" href="#tasks" onClick={event => navigateToSection(event, 'tasks')}>המשימות שלי</a><a className="nav-ideas" href="#ideas" onClick={event => navigateToSection(event, 'ideas')}>מסע הרעיונות</a><a className="nav-recommendations" href="#recommendations" onClick={event => navigateToSection(event, 'recommendations')}>המלצות אישיות</a><a className="nav-progress" href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a className="nav-blog" href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a className="nav-community" href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a className="nav-leaderboard" href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a className="nav-settings" href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
         </div>
       </nav>
 
@@ -1090,6 +1211,60 @@ function App() {
             <time dateTime={claim.createdAt}>{new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(claim.createdAt))}</time>
             <strong>+{claim.points} נק׳</strong>
           </li>)}</ul> : <p>הפרסים שתקבלו על השלמת משימות יופיעו כאן.</p>}
+        </div>
+      </section>
+      </div>
+
+      <div className={`dashboard-panel ${collapsedDashboardSections.ideas ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('ideas') }}>
+      <section className="ideas-section" id="ideas" aria-labelledby="ideas-title">
+        <div className="statistics-heading"><div><span className="section-kicker">איך המחשבות שלך משתנות?</span><h2 id="ideas-title">מסע הרעיונות שלי</h2></div><span className="statistics-period">{ideas.length} רעיונות</span>{sectionControls('ideas', 'מסע הרעיונות')}</div>
+        <form className="idea-create-form" onSubmit={createIdea}>
+          <label><span>רעיון חדש</span><input value={ideaTitleDraft} onChange={event => setIdeaTitleDraft(event.target.value)} maxLength="100" placeholder="למשל: תחבורה ציבורית בשבת" aria-label="שם הרעיון החדש" /></label>
+          <button className="primary-button" type="submit" disabled={!ideaTitleDraft.trim()}>＋ יצירת רעיון</button>
+        </form>
+        {ideasError && <p className="idea-error" role="alert">{ideasError}</p>}
+        <div className="ideas-workspace">
+          <aside className="ideas-list" aria-label="הרעיונות שלי">
+            <h3>הרעיונות שלי</h3>
+            {ideasLoading ? <p className="ideas-empty">טוען רעיונות…</p> : ideas.length ? ideas.map(idea => <div className={`idea-list-row ${selectedIdeaId === idea._id ? 'is-selected' : ''}`} key={idea._id}>
+              <button type="button" className="idea-select-button" aria-pressed={selectedIdeaId === idea._id} onClick={() => setSelectedIdeaId(idea._id)}><strong>{idea.title}</strong><small>{idea.entries.length} פריטים בציר הזמן</small></button>
+              <button type="button" className="idea-delete-button" aria-label={`מחיקת הרעיון ${idea.title}`} title="מחיקת רעיון" onClick={() => deleteIdea(idea)}>×</button>
+            </div>) : <p className="ideas-empty">צרו רעיון ראשון כדי להתחיל לבנות לו ציר זמן.</p>}
+          </aside>
+          <div className="idea-detail">
+            {selectedIdea ? <>
+              <div className="idea-detail-heading"><div><span className="section-kicker">ציר הזמן</span><h3>{selectedIdea.title}</h3></div><span>{ideaTimelineEntries.length} פריטים</span></div>
+              <form className="idea-link-form" onSubmit={addIdeaEntry}>
+                <div className="idea-kind-switch" role="group" aria-label="סוג פריט להוספה">
+                  <button type="button" className={ideaEntryKind === 'conversation' ? 'is-selected' : ''} aria-pressed={ideaEntryKind === 'conversation'} onClick={() => { setIdeaEntryKind('conversation'); setIdeaEntryTargetId(''); }}>תגובה שמורה</button>
+                  <button type="button" className={ideaEntryKind === 'blogPost' ? 'is-selected' : ''} aria-pressed={ideaEntryKind === 'blogPost'} onClick={() => { setIdeaEntryKind('blogPost'); setIdeaEntryTargetId(''); }}>פוסט שלי</button>
+                </div>
+                <label className="idea-entry-picker"><span>{ideaEntryKind === 'conversation' ? 'בחירת תגובה שמורה' : 'בחירת פוסט מהבלוג שלי'}</span><select required value={ideaEntryTargetId} onChange={event => setIdeaEntryTargetId(event.target.value)}>
+                  <option value="">בחרו פריט לציר הזמן</option>
+                  {ideaEntryKind === 'conversation' ? convos.map(conversation => <option key={conversation._id} value={conversation._id}>{[conversation.siteName, conversation.pageTitle || conversation.yourComment].filter(Boolean).join(' · ').slice(0, 140)}</option>) : myBlogPosts.map(post => <option key={post._id} value={post._id}>{post.title}</option>)}
+                </select></label>
+                <label className="idea-entry-note"><span>הערה אישית על הפריט <small>פרטית לך בלבד</small></span><textarea value={ideaEntryNote} onChange={event => setIdeaEntryNote(event.target.value)} maxLength="500" rows="2" placeholder="מה חשבת על הרעיון בשלב הזה? (לא חובה)" /></label>
+                <button className="idea-add-button" type="submit" disabled={!ideaEntryTargetId}>הוספה לציר הזמן</button>
+              </form>
+              {ideaTimelineEntries.length ? <ol className="idea-timeline">{ideaTimelineEntries.map(entry => {
+                const noteKey = `${selectedIdea._id}:${entry._id}`;
+                const missingSource = !entry.source;
+                const entryTitle = entry.kind === 'conversation'
+                  ? entry.source ? [entry.source.siteName, entry.source.pageTitle].filter(Boolean).join(' · ') || 'תגובה שמורה' : 'התגובה השמורה כבר לא זמינה'
+                  : entry.source?.title || 'הפוסט כבר לא זמין';
+                const entryBody = entry.kind === 'conversation' ? entry.source?.yourComment : entry.source?.content;
+                return <li className="idea-timeline-item" key={entry._id}>
+                  <span className="idea-timeline-marker" aria-hidden="true">{entry.kind === 'conversation' ? '↩' : '✎'}</span>
+                  <article>
+                    <div className="idea-entry-topline"><div><time dateTime={entry.sortDate.toISOString()}>{entry.sortDate.toLocaleDateString('he-IL')}</time><span>{entry.kind === 'conversation' ? 'תגובה שמורה' : 'פוסט שלי'}</span></div><button type="button" className="idea-entry-remove" onClick={() => removeIdeaEntry(selectedIdea, entry)} aria-label="הסרת הפריט מציר הזמן" title="הסרה מציר הזמן">×</button></div>
+                    <h4>{entryTitle}</h4>
+                    {entryBody && <p className="idea-entry-quote">{entryBody}</p>}
+                    {!missingSource && <label className="idea-personal-note"><span>הערה אישית <small>נשמרת בפרטיות</small></span><textarea maxLength="500" rows="2" value={ideaNoteDrafts[noteKey] ?? entry.note ?? ''} onChange={event => setIdeaNoteDrafts(previous => ({ ...previous, [noteKey]: event.target.value }))} onBlur={event => saveIdeaNote(selectedIdea, entry, event.target.value)} placeholder="הוסיפו מחשבה משלכם על הפריט הזה" /></label>}
+                  </article>
+                </li>;
+              })}</ol> : <p className="idea-timeline-empty">בחרו תגובה שמורה או פוסט שלכם כדי להוסיף את התחנה הראשונה למסע.</p>}
+            </> : <div className="idea-detail-empty"><span aria-hidden="true">◇</span><h3>{ideasLoading ? 'טוען את הרעיונות שלך' : 'בחרו רעיון או צרו אחד חדש'}</h3><p>כל רעיון יקבל ציר זמן פרטי של תגובות ופוסטים וההערות האישיות שלכם.</p></div>}
+          </div>
         </div>
       </section>
       </div>
