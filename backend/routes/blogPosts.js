@@ -10,6 +10,16 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
+function getSourceSite(siteName, siteUrl) {
+  const name = String(siteName || '').trim();
+  let host = '';
+  try {
+    if (siteUrl) host = new URL(siteUrl).hostname.replace(/^www\./i, '').toLocaleLowerCase();
+  } catch {}
+  const key = host || name.toLocaleLowerCase();
+  return key ? { key, label: name || host } : null;
+}
+
 async function attachReactionData(posts, userId) {
   if (!posts.length) return [];
   const ids = posts.map(post => post._id);
@@ -26,10 +36,10 @@ async function attachReactionData(posts, userId) {
     BlogReaction.find({ postId: { $in: ids }, userId }).select('postId type').lean(),
     User.find({ _id: { $in: ownerIds } }).select('_id avatarId').lean(),
     knownConversationIds.length
-      ? Conversation.find({ _id: { $in: knownConversationIds } }).select('_id userId likesCount dislikesCount').lean()
+      ? Conversation.find({ _id: { $in: knownConversationIds } }).select('_id userId siteName siteUrl hint likesCount dislikesCount').lean()
       : Promise.resolve([]),
     inferenceFilters.length
-      ? Conversation.find({ $or: inferenceFilters }).select('_id userId pageTitle siteUrl likesCount dislikesCount').lean()
+      ? Conversation.find({ $or: inferenceFilters }).select('_id userId siteName pageTitle siteUrl hint likesCount dislikesCount').lean()
       : Promise.resolve([]),
   ]);
   const avatarByOwner = new Map(owners.map(owner => [owner._id.toString(), owner.avatarId || 'comment-bubble']));
@@ -68,9 +78,19 @@ async function attachReactionData(posts, userId) {
     const sourceDislikesCount = sourceConversationIds.length
       ? sourceConversations.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0)
       : item.sourceDislikesCount || 0;
+    const sourceTopics = [...new Set(sourceConversations.map(conversation => conversation.hint).filter(Boolean))];
+    const sourceSites = new Map();
+    sourceConversations.forEach(conversation => {
+      const site = getSourceSite(conversation.siteName, conversation.siteUrl);
+      if (site) sourceSites.set(site.key, site);
+    });
+    const linkedSourceSite = getSourceSite('', item.sourceUrl);
+    if (linkedSourceSite && !sourceSites.has(linkedSourceSite.key)) sourceSites.set(linkedSourceSite.key, linkedSourceSite);
     return {
       ...item,
       sourceConversationIds,
+      sourceTopics,
+      sourceSites: [...sourceSites.values()],
       sourceLikesCount,
       sourceDislikesCount,
       likesCount: (item.likesCount || 0) + countsForPost.likesCount,

@@ -85,7 +85,11 @@ function App() {
   const [communityBlogSearchText, setCommunityBlogSearchText] = useState('');
   const [myBlogDateRange, setMyBlogDateRange] = useState({ from: '', to: '' });
   const [myBlogAuthorFilter, setMyBlogAuthorFilter] = useState('all');
+  const [myBlogSiteFilter, setMyBlogSiteFilter] = useState('all');
+  const [myBlogTopicFilter, setMyBlogTopicFilter] = useState('all');
   const [communityBlogAuthorFilter, setCommunityBlogAuthorFilter] = useState('all');
+  const [communityBlogSiteFilter, setCommunityBlogSiteFilter] = useState('all');
+  const [communityBlogTopicFilter, setCommunityBlogTopicFilter] = useState('all');
   const [communityBlogDateRange, setCommunityBlogDateRange] = useState({ from: '', to: '' });
   const [blogSortOrder, setBlogSortOrder] = useState('newest');
   const [successMessage, setSuccessMessage] = useState('');
@@ -722,6 +726,51 @@ function App() {
       ...(post.comments || []).flatMap(comment => [comment.author, comment.content])].filter(Boolean).join(' ').toLocaleLowerCase();
     return searchableText.includes(query);
   };
+  const getPostTopics = post => {
+    if (post.sourceTopics?.length) return post.sourceTopics;
+    const sourceIds = new Set((post.sourceConversationIds || []).map(String));
+    return [...new Set(convos.filter(conversation => sourceIds.has(String(conversation._id))).map(conversation => conversation.hint).filter(Boolean))];
+  };
+  const getSiteDetails = (siteName, siteUrl) => {
+    const name = String(siteName || '').trim();
+    let host = '';
+    try {
+      if (siteUrl) host = new URL(siteUrl).hostname.replace(/^www\./i, '').toLocaleLowerCase();
+    } catch {}
+    const key = host || name.toLocaleLowerCase();
+    return key ? { key, label: name || host } : null;
+  };
+  const getPostSites = post => {
+    if (post.sourceSites?.length) return post.sourceSites;
+    const sites = new Map();
+    const sourceIds = new Set((post.sourceConversationIds || []).map(String));
+    convos.filter(conversation => sourceIds.has(String(conversation._id))).forEach(conversation => {
+      const site = getSiteDetails(conversation.siteName, conversation.siteUrl);
+      if (site) sites.set(site.key, site);
+    });
+    const sourceSite = getSiteDetails('', post.sourceUrl);
+    if (sourceSite && !sites.has(sourceSite.key)) sites.set(sourceSite.key, sourceSite);
+    return [...sites.values()];
+  };
+  const getBlogSiteOptions = posts => {
+    const sites = new Map();
+    posts.forEach(post => getPostSites(post).forEach(site => {
+      if (!sites.has(site.key)) sites.set(site.key, site);
+    }));
+    return [...sites.values()].sort((first, second) => first.label.localeCompare(second.label, 'he'));
+  };
+  const myBlogSites = getBlogSiteOptions(myBlogPosts);
+  const communityBlogSites = getBlogSiteOptions(communityBlogPosts);
+  const matchesBlogSite = (post, siteFilter) => {
+    if (siteFilter === 'all') return true;
+    const sites = getPostSites(post);
+    return siteFilter === 'uncategorized' ? sites.length === 0 : sites.some(site => site.key === siteFilter);
+  };
+  const matchesBlogTopic = (post, topicFilter) => {
+    if (topicFilter === 'all') return true;
+    const topics = getPostTopics(post);
+    return topicFilter === 'uncategorized' ? topics.length === 0 : topics.includes(topicFilter);
+  };
   const matchesBlogDateRange = (post, dateRange) => {
     const createdAt = new Date(post.createdAt);
     if (Number.isNaN(createdAt.getTime())) return false;
@@ -745,10 +794,14 @@ function App() {
   const filteredMyBlogPosts = sortBlogPosts(myBlogPosts.filter(post =>
     matchesBlogSearch(post, myBlogSearchText)
     && matchesBlogDateRange(post, myBlogDateRange)
+    && matchesBlogSite(post, myBlogSiteFilter)
+    && matchesBlogTopic(post, myBlogTopicFilter)
     && (myBlogAuthorFilter === 'all' || post.author?.trim() === myBlogAuthorFilter)));
   const filteredCommunityBlogPosts = sortBlogPosts(communityBlogPosts.filter(post =>
     matchesBlogSearch(post, communityBlogSearchText)
     && matchesBlogDateRange(post, communityBlogDateRange)
+    && matchesBlogSite(post, communityBlogSiteFilter)
+    && matchesBlogTopic(post, communityBlogTopicFilter)
     && (communityBlogAuthorFilter === 'all' || post.author?.trim() === communityBlogAuthorFilter)));
   const blogCommentsCount = myBlogPosts.reduce((total, post) => total + (post.comments?.length || 0), 0);
   const pointsFromBlogPosts = myBlogPosts.length * 5;
@@ -1098,11 +1151,13 @@ function App() {
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span>{sectionControls('blog', 'הבלוג שלי')}</div>
         <label className="blog-search"><span>חיפוש בבלוג שלי</span><input type="search" value={myBlogSearchText} onChange={event => setMyBlogSearchText(event.target.value)} placeholder="כותרת, תוכן או תגובה..." aria-label="חיפוש בבלוג שלי" /><small>{filteredMyBlogPosts.length} מתוך {myBlogPosts.length} פוסטים</small></label>
-        <div className="blog-filter-row" aria-label="סינון פוסטים לפי כותב ותאריך">
+        <div className="blog-filter-row" aria-label="סינון פוסטים לפי כותב, אתר, נושא ותאריך">
           <label className="blog-filter-field blog-author-filter"><span>כותב</span><select value={myBlogAuthorFilter} onChange={event => setMyBlogAuthorFilter(event.target.value)}><option value="all">כל הכינויים שלי</option>{myBlogAuthors.map(author => <option key={author} value={author}>{author}</option>)}</select></label>
+          <label className="blog-filter-field"><span>אתר מקור</span><select value={myBlogSiteFilter} onChange={event => setMyBlogSiteFilter(event.target.value)}><option value="all">כל האתרים</option>{myBlogSites.map(site => <option key={site.key} value={site.key}>{site.label}</option>)}<option value="uncategorized">ללא אתר מקור</option></select></label>
+          <label className="blog-filter-field"><span>נושא האתר</span><select value={myBlogTopicFilter} onChange={event => setMyBlogTopicFilter(event.target.value)}><option value="all">כל הנושאים</option>{TOPICS.map(topic => <option key={topic} value={topic}>{topic}</option>)}<option value="uncategorized">ללא נושא</option></select></label>
           <label className="blog-filter-field"><span>מתאריך</span><input type="date" value={myBlogDateRange.from} max={myBlogDateRange.to || undefined} onChange={event => setMyBlogDateRange(previous => ({ ...previous, from: event.target.value }))} /></label>
           <label className="blog-filter-field"><span>עד תאריך</span><input type="date" value={myBlogDateRange.to} min={myBlogDateRange.from || undefined} onChange={event => setMyBlogDateRange(previous => ({ ...previous, to: event.target.value }))} /></label>
-          {(myBlogAuthorFilter !== 'all' || myBlogDateRange.from || myBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setMyBlogAuthorFilter('all'); setMyBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
+          {(myBlogAuthorFilter !== 'all' || myBlogSiteFilter !== 'all' || myBlogTopicFilter !== 'all' || myBlogDateRange.from || myBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setMyBlogAuthorFilter('all'); setMyBlogSiteFilter('all'); setMyBlogTopicFilter('all'); setMyBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
         </div>
         <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         {!nickname && <p className="blog-author-note">בחרו כינוי בחלק העליון של העמוד כדי לפרסם פוסט בשם שלכם.</p>}
@@ -1129,11 +1184,13 @@ function App() {
       <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span>{sectionControls('community-blog', 'בלוג המגיבים')}</div>
         <label className="blog-search"><span>חיפוש בבלוג המגיבים</span><input type="search" value={communityBlogSearchText} onChange={event => setCommunityBlogSearchText(event.target.value)} placeholder="כותרת, כותב, תוכן או תגובה..." aria-label="חיפוש בבלוג המגיבים" /><small>{filteredCommunityBlogPosts.length} מתוך {communityBlogPosts.length} פוסטים</small></label>
-        <div className="blog-filter-row" aria-label="סינון פוסטים לפי כותב ותאריך">
+        <div className="blog-filter-row" aria-label="סינון פוסטים לפי כותב, אתר, נושא ותאריך">
           <label className="blog-filter-field blog-author-filter"><span>כותב</span><select value={communityBlogAuthorFilter} onChange={event => setCommunityBlogAuthorFilter(event.target.value)}><option value="all">כל הכותבים</option>{blogAuthors.map(author => <option key={author} value={author}>{author}</option>)}</select></label>
+          <label className="blog-filter-field"><span>אתר מקור</span><select value={communityBlogSiteFilter} onChange={event => setCommunityBlogSiteFilter(event.target.value)}><option value="all">כל האתרים</option>{communityBlogSites.map(site => <option key={site.key} value={site.key}>{site.label}</option>)}<option value="uncategorized">ללא אתר מקור</option></select></label>
+          <label className="blog-filter-field"><span>נושא האתר</span><select value={communityBlogTopicFilter} onChange={event => setCommunityBlogTopicFilter(event.target.value)}><option value="all">כל הנושאים</option>{TOPICS.map(topic => <option key={topic} value={topic}>{topic}</option>)}<option value="uncategorized">ללא נושא</option></select></label>
           <label className="blog-filter-field"><span>מתאריך</span><input type="date" value={communityBlogDateRange.from} max={communityBlogDateRange.to || undefined} onChange={event => setCommunityBlogDateRange(previous => ({ ...previous, from: event.target.value }))} /></label>
           <label className="blog-filter-field"><span>עד תאריך</span><input type="date" value={communityBlogDateRange.to} min={communityBlogDateRange.from || undefined} onChange={event => setCommunityBlogDateRange(previous => ({ ...previous, to: event.target.value }))} /></label>
-          {(communityBlogAuthorFilter !== 'all' || communityBlogDateRange.from || communityBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setCommunityBlogAuthorFilter('all'); setCommunityBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
+          {(communityBlogAuthorFilter !== 'all' || communityBlogSiteFilter !== 'all' || communityBlogTopicFilter !== 'all' || communityBlogDateRange.from || communityBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setCommunityBlogAuthorFilter('all'); setCommunityBlogSiteFilter('all'); setCommunityBlogTopicFilter('all'); setCommunityBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
         </div>
         <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
