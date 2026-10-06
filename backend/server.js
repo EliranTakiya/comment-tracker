@@ -13,10 +13,11 @@ app.use(express.json());
 const frontendOrigin = process.env.FRONTEND_URL
   ? new URL(process.env.FRONTEND_URL).origin
   : 'http://localhost:3000';
-app.use(cors({ origin: frontendOrigin, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
+const allowedOrigins = new Set([frontendOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000']);
+app.use(cors({ origin: [...allowedOrigins], credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use((req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  if (req.get('Origin') !== frontendOrigin) return res.status(403).json({ message: 'Request origin is not allowed' });
+  if (!allowedOrigins.has(req.get('Origin'))) return res.status(403).json({ message: 'Request origin is not allowed' });
   next();
 });
 const mongoUri = process.env.MONGO_URI;

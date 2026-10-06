@@ -3,9 +3,7 @@ import axios from 'axios';
 import './App.css';
 
 axios.defaults.withCredentials = true;
-const API_BASE_URL = process.env.NODE_ENV === 'development'
-  ? (process.env.REACT_APP_BACKEND_URL || '')
-  : '';
+const API_BASE_URL = '';
 
 const TOPICS = ['חדשות כללי', 'ספורט', 'כלכלה', 'פוליטיקה', 'אופנה', 'סלבס'];
 const DATE_FILTERS = [
@@ -29,6 +27,13 @@ const BADGES = [
   { name: 'טוקבקיסט ותיק', min: 150, icon: '★', className: 'veteran' },
   { name: 'טוקבקיסט על', min: 300, icon: '✹', className: 'super' },
 ];
+
+const getLocalDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const getLocalWeekStart = (date) => {
+  const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  return weekStart;
+};
 
 const AVATARS = [
   { id: 'comment-bubble', label: 'בועת תגובה', emoji: '🗨️' },
@@ -83,7 +88,7 @@ function App() {
   const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
-  const dashboardSectionIds = ['statistics', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
+  const dashboardSectionIds = ['statistics', 'tasks', 'recommendations', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
   const [dashboardOrder, setDashboardOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
@@ -745,6 +750,74 @@ function App() {
   const totalLikes = statisticsConvos.reduce((total, conversation) => total + (conversation.likesCount || 0), 0);
   const totalDislikes = statisticsConvos.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
   const statisticsReplies = statisticsConvos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
+  const now = new Date();
+  const todayKey = getLocalDateKey(now);
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const activityDates = new Set(convos
+    .map(conversation => new Date(conversation.createdAt))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .map(getLocalDateKey));
+  const todaySavedComments = convos.filter(conversation => {
+    const date = new Date(conversation.createdAt);
+    return !Number.isNaN(date.getTime()) && getLocalDateKey(date) === todayKey;
+  }).length;
+  const monthSavedComments = convos.filter(conversation => {
+    const date = new Date(conversation.createdAt);
+    return !Number.isNaN(date.getTime()) && `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` === monthKey;
+  }).length;
+  const streakAnchor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!activityDates.has(todayKey)) streakAnchor.setDate(streakAnchor.getDate() - 1);
+  let activityStreak = 0;
+  for (let day = new Date(streakAnchor); activityDates.has(getLocalDateKey(day)); day.setDate(day.getDate() - 1)) activityStreak += 1;
+  const missionItems = [
+    { id: 'daily', icon: '◷', title: 'שמרו 3 תגובות היום', value: todaySavedComments, goal: 3, caption: `${todaySavedComments} מתוך 3` },
+    { id: 'monthly', icon: '▦', title: 'שמרו 20 תגובות החודש', value: monthSavedComments, goal: 20, caption: `${monthSavedComments} מתוך 20 החודש` },
+    { id: 'streak', icon: '↗', title: 'שמרו על רצף של 7 ימים', value: activityStreak, goal: 7, caption: `${activityStreak} מתוך 7 ימים ברצף` },
+    { id: 'milestone', icon: '◇', title: 'הגיעו ל־50 תגובות שמורות', value: convos.length, goal: 50, caption: `${convos.length} מתוך 50 תגובות` },
+  ];
+  const currentWeekStart = getLocalWeekStart(now);
+  const previousWeekStart = new Date(currentWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const currentWeekConvos = convos.filter(conversation => {
+    const date = new Date(conversation.createdAt);
+    return !Number.isNaN(date.getTime()) && date >= currentWeekStart && date <= now;
+  });
+  const previousWeekConvos = convos.filter(conversation => {
+    const date = new Date(conversation.createdAt);
+    return !Number.isNaN(date.getTime()) && date >= previousWeekStart && date < currentWeekStart;
+  });
+  const siteWeekActivity = Object.values(convos.reduce((sites, conversation) => {
+    const date = new Date(conversation.createdAt);
+    const site = conversation.siteName?.trim();
+    if (!site || Number.isNaN(date.getTime()) || date < previousWeekStart || date > now) return sites;
+    const counts = sites[site] || { name: site, current: 0, previous: 0 };
+    if (date >= currentWeekStart) counts.current += 1;
+    else counts.previous += 1;
+    sites[site] = counts;
+    return sites;
+  }, {}));
+  const siteToRevisit = siteWeekActivity
+    .filter(site => site.previous > site.current)
+    .sort((first, second) => (second.previous - second.current) - (first.previous - first.current))[0];
+  const personalRecommendations = [];
+  if (previousWeekConvos.length && currentWeekConvos.length > previousWeekConvos.length) {
+    const increase = Math.round(((currentWeekConvos.length - previousWeekConvos.length) / previousWeekConvos.length) * 100);
+    personalRecommendations.push({ icon: '↗', title: 'הפעילות שלך במגמת עלייה', message: `שמרת ${currentWeekConvos.length} תגובות השבוע, ${increase}% יותר מהשבוע שעבר. כדאי לשמור על הקצב.` });
+  } else if (previousWeekConvos.length && currentWeekConvos.length < previousWeekConvos.length) {
+    personalRecommendations.push({ icon: '◎', title: 'כדאי לחזור לקצב שלך', message: `שמרת ${currentWeekConvos.length} תגובות השבוע לעומת ${previousWeekConvos.length} בשבוע שעבר. יעד קטן של 2 תגובות נוספות יכול לעזור.` });
+  } else if (currentWeekConvos.length && !previousWeekConvos.length) {
+    personalRecommendations.push({ icon: '✦', title: 'השבוע התחלת לצבור פעילות', message: `שמרת ${currentWeekConvos.length} תגובות השבוע. נמשיך להשוות ככל שיצטברו נתונים.` });
+  } else if (!currentWeekConvos.length) {
+    personalRecommendations.push({ icon: '◷', title: 'אפשר להתחיל כבר השבוע', message: 'עדיין לא שמרת תגובות השבוע. שמירת תגובה אחת תתחיל לעדכן את ההתקדמות שלך.' });
+  } else {
+    personalRecommendations.push({ icon: '＝', title: 'שמרת על קצב יציב', message: `שמרת ${currentWeekConvos.length} תגובות השבוע, כמו בשבוע שעבר. אפשר להציב יעד קטן של תגובה נוספת.` });
+  }
+  if (siteToRevisit) {
+    const message = siteToRevisit.current === 0
+      ? `השבוע עדיין לא שמרת תגובות באתר ${siteToRevisit.name}, שבו שמרת ${siteToRevisit.previous} בשבוע שעבר. נסה לשמור שם 2 תגובות.`
+      : `הפעילות באתר ${siteToRevisit.name} ירדה מ־${siteToRevisit.previous} ל־${siteToRevisit.current} תגובות שמורות. אולי כדאי לחזור אליו השבוע.`;
+    personalRecommendations.push({ icon: '⌖', title: 'אתר שכדאי לחזור אליו', message });
+  }
 
   if (!authReady || !splashDelayDone) {
     return <main className="splash-screen" dir="rtl" role="status" aria-live="polite" aria-busy="true">
@@ -849,7 +922,7 @@ function App() {
           <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
         </button>
         <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
+          <a href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a href="#tasks" onClick={event => navigateToSection(event, 'tasks')}>המשימות שלי</a><a href="#recommendations" onClick={event => navigateToSection(event, 'recommendations')}>המלצות אישיות</a><a href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
         </div>
       </nav>
 
@@ -867,6 +940,32 @@ function App() {
           <article className="stat-card"><span>אתרים שהגבתי בהם</span><strong>{statisticsSites.length}</strong><small>אתרים שונים</small></article>
         </div>
         <div className="statistics-sites"><h3>איפה הגבתי הכי הרבה?</h3>{siteStats.length ? siteStats.map(([site, count]) => <div className="site-stat" key={site}><span>{site}</span><div className="site-stat-track"><i style={{ width: `${Math.max(8, count / topSiteCount * 100)}%` }} /></div><strong>{count}</strong></div>) : <p>שמרו תגובה ראשונה כדי להתחיל לצבור נתונים.</p>}</div>
+      </section>
+      </div>
+
+      <div className={`dashboard-panel ${collapsedDashboardSections.tasks ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('tasks') }}>
+      <section className="tasks-section" id="tasks" aria-labelledby="tasks-title">
+        <div className="statistics-heading"><div><span className="section-kicker">צעד קטן בכל פעם</span><h2 id="tasks-title">המשימות שלי</h2></div><span className="tasks-streak">רצף נוכחי: <strong>{activityStreak}</strong> ימים</span>{sectionControls('tasks', 'המשימות שלי')}</div>
+        <div className="tasks-grid">{missionItems.map(mission => {
+          const progress = Math.min(100, Math.round((mission.value / mission.goal) * 100));
+          const complete = mission.value >= mission.goal;
+          return <article className={`mission-item ${complete ? 'is-complete' : ''}`} key={mission.id}>
+            <div className="mission-heading"><span className="mission-icon" aria-hidden="true">{complete ? '✓' : mission.icon}</span><div><h3>{mission.title}</h3><p>{complete ? 'היעד הושלם' : mission.caption}</p></div></div>
+            <div className="mission-track" role="progressbar" aria-label={mission.title} aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${progress}%` }} /></div>
+          </article>;
+        })}</div>
+        <p className="tasks-note">המשימות מתקדמות לפי תגובות ששמרת במערכת.</p>
+      </section>
+      </div>
+
+      <div className={`dashboard-panel ${collapsedDashboardSections.recommendations ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('recommendations') }}>
+      <section className="recommendations-section" id="recommendations" aria-labelledby="recommendations-title">
+        <div className="statistics-heading"><div><span className="section-kicker">תובנות מהפעילות שלך</span><h2 id="recommendations-title">המלצות אישיות</h2></div><span className="statistics-period">השבוע לעומת הקודם</span>{sectionControls('recommendations', 'המלצות אישיות')}</div>
+        <div className="recommendations-list">{personalRecommendations.map((recommendation, index) => <article className="recommendation-item" key={`${recommendation.title}-${index}`}>
+          <span className="recommendation-icon" aria-hidden="true">{recommendation.icon}</span>
+          <div><h3>{recommendation.title}</h3><p>{recommendation.message}</p></div>
+        </article>)}</div>
+        <p className="recommendations-note">ההמלצות מבוססות על תגובות ששמרת ועל האתרים שהיו פעילים בהם.</p>
       </section>
       </div>
 
