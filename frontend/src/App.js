@@ -29,6 +29,7 @@ const BADGES = [
 ];
 
 const getLocalDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const normalizeSiteName = (siteName) => String(siteName || '').trim().toLocaleLowerCase();
 const getLocalWeekStart = (date) => {
   const weekStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
@@ -675,7 +676,7 @@ function App() {
             : null;
 
     return convos.filter((conversation) => {
-      const matchesSite = siteFilter === 'all' || conversation.siteName === siteFilter;
+      const matchesSite = siteFilter === 'all' || normalizeSiteName(conversation.siteName) === siteFilter;
       const searchValue = searchText.trim().toLocaleLowerCase();
       const matchesSearch = !searchValue || [conversation.siteName, conversation.pageTitle, conversation.yourComment]
         .some(value => (value || '').toLocaleLowerCase().includes(searchValue));
@@ -693,7 +694,18 @@ function App() {
     });
   }, [convos, siteFilter, searchText, topicFilter, dateFilter, customDate, repliesFilter]);
 
-  const savedSites = [...new Set(convos.map(conversation => conversation.siteName).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'he'));
+  const savedSites = [...convos.reduce((sites, conversation) => {
+    const label = String(conversation.siteName || '').trim();
+    const key = normalizeSiteName(label);
+    if (!key) return sites;
+    const site = sites.get(key) || { key, label, count: 0, spellingCounts: new Map() };
+    site.count += 1;
+    const spellingCount = (site.spellingCounts.get(label) || 0) + 1;
+    site.spellingCounts.set(label, spellingCount);
+    if (spellingCount > (site.spellingCounts.get(site.label) || 0)) site.label = label;
+    sites.set(key, site);
+    return sites;
+  }, new Map()).values()].sort((first, second) => first.label.localeCompare(second.label, 'he'));
   const totalCommentLikes = convos.reduce((total, conversation) => total + (conversation.likesCount || 0), 0);
   const totalCommentDislikes = convos.reduce((total, conversation) => total + (conversation.dislikesCount || 0), 0);
   const pointsFromSavedComments = convos.length;
@@ -1233,7 +1245,7 @@ function App() {
           <input className="search-filter" type="search" value={searchText} onChange={e => setSearchText(e.target.value)} placeholder="חיפוש חופשי..." aria-label="חיפוש חופשי" />
           <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)} aria-label="סינון לפי אתר">
             <option value="all">כל האתרים</option>
-            {savedSites.map(site => <option key={site} value={site}>{site}</option>)}
+            {savedSites.map(site => <option key={site.key} value={site.key}>{site.label}</option>)}
           </select>
           <select value={topicFilter} onChange={e => setTopicFilter(e.target.value)} aria-label="סינון לפי נושא">
             <option value="all">כל הנושאים</option>
