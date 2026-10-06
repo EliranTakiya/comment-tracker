@@ -1434,7 +1434,7 @@ function App() {
           {rawPoints < 0 && <small>הניקוד לא יורד מתחת לאפס.</small>}
         </div>
         <div className="blog-activity-panel">
-          <h3>פעילות הבלוג</h3>
+          <h3>הפעילות שלי בבלוג</h3>
           <p>הנתונים מתעדכנים אוטומטית לפי הפוסטים והתגובות בבלוג.</p>
           <div className="blog-activity-grid">
             <div className="blog-count"><span>פוסטים שפורסמו</span><strong>{myBlogPosts.length}</strong></div>
