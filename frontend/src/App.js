@@ -117,7 +117,9 @@ function App() {
   const [dashboardOrder, setDashboardOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
-      return Array.isArray(saved) && dashboardSectionIds.every(id => saved.includes(id)) ? saved : dashboardSectionIds;
+      if (!Array.isArray(saved)) return dashboardSectionIds;
+      const knownSavedIds = [...new Set(saved.filter(id => dashboardSectionIds.includes(id)))];
+      return [...knownSavedIds, ...dashboardSectionIds.filter(id => !knownSavedIds.includes(id))];
     } catch { return dashboardSectionIds; }
   });
   const [collapsedDashboardSections, setCollapsedDashboardSections] = useState(() => {
