@@ -1611,11 +1611,13 @@ function App() {
             <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
           </div>}
           <div className="identity-direction-grid">{IDENTITY_DIRECTIONS.map((direction, index) => {
-            if (direction.id === 'crest-of-the-voice') return null;
-            const earned = earnedIdentityDirectionIds.includes(direction.id) || storedIdentityDirectionIds.includes(direction.id);
-            const selected = visibleIdentityDirection.id === direction.id;
-            const branchProgress = direction.id === 'crest-of-the-voice'
-              ? { value: 1, goal: 1, detail: 'הסמל המקורי שלך · פתוח תמיד' }
+            const isBaseCrest = direction.id === 'crest-of-the-voice';
+            const earned = isBaseCrest
+              ? crestEarned
+              : earnedIdentityDirectionIds.includes(direction.id) || storedIdentityDirectionIds.includes(direction.id);
+            const selected = earned && visibleIdentityDirection.id === direction.id;
+            const branchProgress = isBaseCrest
+              ? { value: Math.min(identityProgressPoints, CREST_UNLOCK_POINTS), goal: CREST_UNLOCK_POINTS, detail: `${Math.min(identityProgressPoints, CREST_UNLOCK_POINTS)} מתוך ${CREST_UNLOCK_POINTS} נקודות לחשיפת הסמל` }
               : direction.progress(identityStats);
             const progressPercent = branchProgress.goal === 100
               ? Math.round(branchProgress.value)
@@ -1623,7 +1625,7 @@ function App() {
             return <button type="button" key={direction.id} className={`identity-direction ${earned ? 'is-earned' : 'is-locked'} ${selected ? 'is-selected' : ''}`} aria-pressed={selected} disabled={!earned || identitySaving} onClick={() => changeIdentityDirection(direction.id)}>
               <span className={`identity-direction-mark identity-mark-${index}`} aria-hidden="true">{earned ? direction.icon : '·'}</span><strong>{direction.name}</strong><small>{direction.description}</small>
               {!earned && <><span className="identity-branch-progress-copy">{branchProgress.detail}</span><span className="identity-branch-track" role="progressbar" aria-label={`התקדמות לפתיחת ${direction.name}`} aria-valuenow={progressPercent} aria-valuemin="0" aria-valuemax="100"><i style={{ width: `${progressPercent}%` }} /></span></>}
-              <span className="identity-direction-state">{!crestEarned ? 'ייפתח אחרי גילוי הסמל' : selected ? currentUser?.identityMode === 'custom' ? 'הענף הנעוץ שלך' : 'הענף הפעיל · אוטומטי' : earned ? 'נפתח · לחצו לנעיצה' : `${progressPercent}% בדרך`}</span>
+              <span className="identity-direction-state">{!earned ? isBaseCrest ? `${progressPercent}% לחשיפת הסמל` : 'ייפתח אחרי גילוי הסמל' : selected ? currentUser?.identityMode === 'custom' ? 'הענף הנעוץ שלך' : 'הענף הפעיל · אוטומטי' : 'נפתח · לחצו לנעיצה'}</span>
             </button>;
           })}</div>
         </div>
