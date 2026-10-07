@@ -1577,10 +1577,11 @@ function App() {
             <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
           </div>
           <div className="identity-direction-grid">{IDENTITY_DIRECTIONS.map((direction, index) => {
-            if (direction.id === 'crest-of-the-voice') return null;
             const earned = earnedIdentityDirectionIds.includes(direction.id) || storedIdentityDirectionIds.includes(direction.id);
             const selected = visibleIdentityDirection.id === direction.id;
-            const branchProgress = direction.progress(identityStats);
+            const branchProgress = direction.id === 'crest-of-the-voice'
+              ? { value: 1, goal: 1, detail: 'הסמל המקורי שלך · פתוח תמיד' }
+              : direction.progress(identityStats);
             const progressPercent = branchProgress.goal === 100
               ? Math.round(branchProgress.value)
               : Math.round((branchProgress.value / branchProgress.goal) * 100);
