@@ -10,6 +10,16 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
+function featuredChallengeBadgeId(user) {
+  const earned = user.earnedChallengeBadges || [];
+  if (earned.some(badge => badge.badgeId === user.selectedChallengeBadgeId)) return user.selectedChallengeBadgeId;
+  const mostRecentEarned = earned.reduce((latest, badge) => {
+    if (!latest) return badge;
+    return new Date(badge.earnedAt || 0) >= new Date(latest.earnedAt || 0) ? badge : latest;
+  }, null);
+  return mostRecentEarned?.badgeId || null;
+}
+
 function getSourceSite(siteName, siteUrl) {
   const name = String(siteName || '').trim();
   let host = '';
@@ -171,12 +181,11 @@ router.get('/leaderboard', async (req, res) => {
       );
       const points = basePoints + (taskRewards.totalPoints || 0);
       const badgeIndex = badgeThresholds.reduce((result, threshold, index) => points >= threshold ? index : result, 0);
-      const hasEarnedFeaturedBadge = (user.earnedChallengeBadges || []).some(badge => badge.badgeId === user.selectedChallengeBadgeId);
       return {
         id,
         displayName: user.displayName,
         avatarId: user.avatarId || 'comment-bubble',
-        featuredChallengeBadgeId: hasEarnedFeaturedBadge ? user.selectedChallengeBadgeId : null,
+        featuredChallengeBadgeId: featuredChallengeBadgeId(user),
         points,
         rank: badges[badgeIndex],
       };
@@ -233,14 +242,13 @@ router.get('/authors/:id', async (req, res) => {
       { name: 'טוקבקיסט על', icon: '✹', className: 'super' },
     ];
     const badgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
-    const hasEarnedFeaturedBadge = (user.earnedChallengeBadges || []).some(badge => badge.badgeId === user.selectedChallengeBadgeId);
     res.json({
       id: user._id.toString(),
       displayName: user.displayName,
       avatarId: user.avatarId || 'comment-bubble',
       joinedAt: user.createdAt,
       rank: badges[badgeIndex],
-      featuredChallengeBadgeId: hasEarnedFeaturedBadge ? user.selectedChallengeBadgeId : null,
+      featuredChallengeBadgeId: featuredChallengeBadgeId(user),
       posts: postsWithReactions,
     });
   } catch (err) {

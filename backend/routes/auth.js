@@ -67,13 +67,22 @@ const CHALLENGE_TOPICS = [
   { id: 'celebrities', label: 'סלבס' },
 ];
 
+function featuredChallengeBadgeId(user) {
+  const earned = user.earnedChallengeBadges || [];
+  if (earned.some(badge => badge.badgeId === user.selectedChallengeBadgeId)) return user.selectedChallengeBadgeId;
+  const mostRecentEarned = earned.reduce((latest, badge) => {
+    if (!latest) return badge;
+    return new Date(badge.earnedAt || 0) >= new Date(latest.earnedAt || 0) ? badge : latest;
+  }, null);
+  return mostRecentEarned?.badgeId || null;
+}
+
 function publicUser(user) {
   const unlockedIdentityDirections = [...new Set(['crest-of-the-voice', ...(user.unlockedIdentityDirections || []).filter(id => IDENTITY_DIRECTIONS.includes(id))])];
   const selectedIdentityDirection = unlockedIdentityDirections.includes(user.selectedIdentityDirection) ? user.selectedIdentityDirection : 'crest-of-the-voice';
   const identityMode = user.identityMode === 'custom' ? 'custom' : 'auto';
   const earnedChallengeBadges = (user.earnedChallengeBadges || []).map(badge => ({ badgeId: badge.badgeId, earnedAt: badge.earnedAt }));
-  const earnedChallengeBadgeIds = new Set(earnedChallengeBadges.map(badge => badge.badgeId));
-  const selectedChallengeBadgeId = earnedChallengeBadgeIds.has(user.selectedChallengeBadgeId) ? user.selectedChallengeBadgeId : null;
+  const selectedChallengeBadgeId = featuredChallengeBadgeId({ ...user, earnedChallengeBadges });
   return { id: user._id.toString(), email: user.email, displayName: user.displayName, avatarId: user.avatarId || 'comment-bubble', theme: user.theme, identityMode, selectedIdentityDirection, unlockedIdentityDirections, earnedChallengeBadges, selectedChallengeBadgeId };
 }
 

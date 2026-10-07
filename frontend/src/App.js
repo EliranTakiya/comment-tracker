@@ -1208,7 +1208,9 @@ function App() {
     return { topic, badgeId, earnedAt, count, progress: Math.min(100, Math.round((count / TOPIC_CHALLENGE_GOAL) * 100)), earned: Boolean(earnedAt) || count >= TOPIC_CHALLENGE_GOAL };
   });
   const earnedTopicChallenges = topicChallenges.filter(challenge => challenge.earnedAt);
-  const featuredChallengeBadge = earnedTopicChallenges.find(challenge => challenge.badgeId === currentUser?.selectedChallengeBadgeId) || null;
+  const featuredChallengeBadge = earnedTopicChallenges.find(challenge => challenge.badgeId === currentUser?.selectedChallengeBadgeId)
+    || [...earnedTopicChallenges].sort((first, second) => new Date(second.earnedAt || 0) - new Date(first.earnedAt || 0))[0]
+    || null;
   const earnedTopicBadgeCount = topicChallenges.filter(challenge => challenge.earnedAt).length;
   const topicChallengeUnlockKey = topicChallenges.filter(challenge => challenge.count >= TOPIC_CHALLENGE_GOAL).map(challenge => challenge.badgeId).join('|');
   const topicMix = TOPICS.map(topic => ({
@@ -1723,10 +1725,10 @@ function App() {
             </div>
             <label className="settings-field featured-badge-select">הבאדג׳ שיופיע לצד הכינוי
               <select value={featuredChallengeBadge?.badgeId || ''} disabled={featuredBadgeSaving || !earnedTopicChallenges.length} onChange={event => changeFeaturedBadge(event.target.value)}>
-                <option value="">{earnedTopicChallenges.length ? 'הסמל האישי שלי' : 'באדג׳ים יופיעו אחרי זכייה באתגר'}</option>
+                <option value="">{earnedTopicChallenges.length ? 'בחירה אוטומטית · האחרון שהרווחת' : 'באדג׳ים יופיעו אחרי זכייה באתגר'}</option>
                 {earnedTopicChallenges.map(challenge => <option key={challenge.badgeId} value={challenge.badgeId}>{challenge.topic}</option>)}
               </select>
-              <small>{featuredBadgeSaving ? 'שומר בחירה…' : earnedTopicChallenges.length ? 'אפשר להחליף בכל עת בין הבאדג׳ים שהרווחת.' : 'השלם אתגר נושא כדי לבחור באדג׳ להצגה.'}</small>
+              <small>{featuredBadgeSaving ? 'שומר בחירה…' : earnedTopicChallenges.length ? 'יוצג הבאדג׳ האחרון שהרווחת, או באדג׳ שתבחר/י.' : 'השלם אתגר נושא כדי להציג באדג׳ לצד הכינוי.'}</small>
             </label>
           </article>
           <article className="settings-card">
