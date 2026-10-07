@@ -23,7 +23,7 @@ const themes = [
   { value: 'glow', label: 'ורד רך', swatch: 'linear-gradient(135deg, #f4dce2, #fbeef0)' },
 ];
 const IDENTITY_DIRECTIONS = [
-  { id: 'crest-of-the-voice', name: 'חותם הקול', icon: '✦', description: 'החותם האישי שלך' },
+  { id: 'crest-of-the-voice', name: 'סמל הקול', icon: '✦', description: 'הסמל האישי שלך' },
   { id: 'the-axis', name: 'הציר', icon: '◇', description: 'נבנה מתגובות ששמרת', unlock: stats => stats.comments >= 20, progress: stats => ({ value: Math.min(stats.comments, 20), goal: 20, detail: `${Math.min(stats.comments, 20)} מתוך 20 תגובות שמורות` }) },
   { id: 'the-bloom', name: 'הפריחה', icon: '✿', description: 'נבנית מרעיונות שפיתחת', unlock: stats => stats.ideas >= 3 && stats.ideaEntries >= 5, progress: stats => ({ value: Math.min(stats.ideas / 3, stats.ideaEntries / 5) * 100, goal: 100, detail: `${Math.min(stats.ideas, 3)} מתוך 3 רעיונות · ${Math.min(stats.ideaEntries, 5)} מתוך 5 פריטים בציר` }) },
   { id: 'the-mark', name: 'החותם', icon: '⌑', description: 'נבנה ממילים שפרסמת', unlock: stats => stats.posts >= 5, progress: stats => ({ value: Math.min(stats.posts, 5), goal: 5, detail: `${Math.min(stats.posts, 5)} מתוך 5 פוסטים שפרסמת` }) },
@@ -381,10 +381,10 @@ function App() {
         identityMode: 'custom',
       });
       setCurrentUser(response.data.user);
-      showSuccess('החותם ננעץ על הענף שבחרת');
+      showSuccess('הסמל ננעץ על הענף שבחרת');
     } catch (err) {
       console.error('Save identity direction error:', err.response?.data || err.message);
-      showSuccess('לא הצלחנו לשמור את בחירת החותם');
+      showSuccess('לא הצלחנו לשמור את בחירת הסמל');
     } finally {
       setIdentitySaving(false);
     }
@@ -396,10 +396,10 @@ function App() {
     try {
       const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { identityMode });
       setCurrentUser(response.data.user);
-      showSuccess(identityMode === 'auto' ? 'החותם יחזור להתפתח אוטומטית' : 'בחר ענף זהות כדי לנעוץ אותו');
+      showSuccess(identityMode === 'auto' ? 'הסמל יחזור להתפתח אוטומטית' : 'בחר ענף זהות כדי לנעוץ אותו');
     } catch (err) {
       console.error('Save identity mode error:', err.response?.data || err.message);
-      showSuccess('לא הצלחנו לשנות את מצב התפתחות החותם');
+      showSuccess('לא הצלחנו לשנות את מצב התפתחות הסמל');
     } finally {
       setIdentitySaving(false);
     }
@@ -1406,9 +1406,9 @@ function App() {
           {featuredChallengeBadge ? <div className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} title={`באדג׳ האתגר שלי: ${featuredChallengeBadge.topic}`}>
             <span className={`identity-user-mark challenge-mark-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[TOPICS.indexOf(featuredChallengeBadge.topic)]}</span>
             <span className="badge-copy"><strong>{featuredChallengeBadge.topic}</strong><small>באדג׳ אתגר</small></span>
-          </div> : crestEarned && <div className="user-badge identity-user-badge" title={`חותם הזהות שלי: ${visibleIdentityDirection.name}`}>
+          </div> : crestEarned && <div className="user-badge identity-user-badge" title={`סמל הזהות שלי: ${visibleIdentityDirection.name}`}>
             <span className="identity-user-mark" aria-hidden="true" style={{ '--topic-mix': topicMixGradient }}>{visibleIdentityDirection.icon}</span>
-            <span className="badge-copy"><strong>{visibleIdentityDirection.name}</strong><small>החותם האישי שלך</small></span>
+            <span className="badge-copy"><strong>{visibleIdentityDirection.name}</strong><small>הסמל האישי שלך</small></span>
           </div>}
         </div>
         <div className="hero-count"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
@@ -1416,8 +1416,8 @@ function App() {
 
       <section className={`crest-evolution ${crestEarned ? 'is-earned' : 'is-hidden'}`} id="identity" aria-labelledby="identity-title" style={{ '--topic-mix': topicMixGradient, '--crest-progress': `${identityProgress}%` }}>
         <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core"><span className="crest-core-fill" style={{ height: `${identityProgress}%` }} /><span className="crest-core-symbol">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
-        <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'החותם הבסיסי נפתח · הזהות ממשיכה להתפתח' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? currentUser?.identityMode === 'custom' ? 'החותם נעוץ על הענף שבחרת. בכל עת אפשר לחזור להתפתחות אוטומטית.' : 'החותם משתנה אוטומטית כשהפעילות שלך פותחת ענפי זהות. אפשר גם לנעוץ ענף פתוח לבחירתך.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לחותם שכבה משלך.'}</p>
-          <div className="crest-progress-heading"><span>{crestEarned ? 'החותם נפתח' : 'התקדמות לחשיפה'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לפתיחת החותם האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
+        <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'הסמל הבסיסי שלך נפתח · הזהות ממשיכה להתפתח' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? currentUser?.identityMode === 'custom' ? 'הסמל נעוץ על הענף שבחרת. בכל עת אפשר לחזור להתפתחות אוטומטית.' : 'הסמל משתנה אוטומטית כשהפעילות שלך פותחת ענפי זהות. אפשר גם לנעוץ ענף פתוח לבחירתך.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לסמל שכבה משלך.'}</p>
+          <div className="crest-progress-heading"><span>{crestEarned ? 'הסמל נחשף' : 'התקדמות לחשיפה'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לחשיפת הסמל האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
         </div>
       </section>
@@ -1571,8 +1571,8 @@ function App() {
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
         <div className="statistics-heading"><div><span className="section-kicker">הישגים משניים</span><h2 id="progress-title">ענפי זהות ואתגרי נושאים</h2></div>{sectionControls('progress', 'ענפי זהות ואתגרי נושאים')}</div>
         {crestEarned && <div className="identity-branches" aria-labelledby="identity-branches-title">
-          <div className="identity-branches-heading"><div><span className="section-kicker">השלב הבא בזהות</span><h3 id="identity-branches-title">התקדמות בתשעת ענפי ה־Crest</h3><p className="identity-mode-caption">{currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · החותם עובר לענף חדש כשאתה פותח אותו'}</p></div><span>{availableIdentityDirectionIds.length} מתוך {IDENTITY_DIRECTIONS.length} פתוחים</span></div>
-          <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות החותם">
+          <div className="identity-branches-heading"><div><span className="section-kicker">השלב הבא בזהות</span><h3 id="identity-branches-title">התקדמות בתשעת ענפי ה־Crest</h3><p className="identity-mode-caption">{currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו'}</p></div><span>{availableIdentityDirectionIds.length} מתוך {IDENTITY_DIRECTIONS.length} פתוחים</span></div>
+          <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות הסמל">
             <button type="button" className={currentUser?.identityMode !== 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode !== 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('auto')}>התפתחות אוטומטית</button>
             <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
           </div>
@@ -1716,7 +1716,7 @@ function App() {
             </div>
             <label className="settings-field featured-badge-select">הבאדג׳ שיופיע לצד הכינוי
               <select value={featuredChallengeBadge?.badgeId || ''} disabled={featuredBadgeSaving || !earnedTopicChallenges.length} onChange={event => changeFeaturedBadge(event.target.value)}>
-                <option value="">{earnedTopicChallenges.length ? 'החותם האישי שלי' : 'באדג׳ים יופיעו אחרי זכייה באתגר'}</option>
+                <option value="">{earnedTopicChallenges.length ? 'הסמל האישי שלי' : 'באדג׳ים יופיעו אחרי זכייה באתגר'}</option>
                 {earnedTopicChallenges.map(challenge => <option key={challenge.badgeId} value={challenge.badgeId}>{challenge.topic}</option>)}
               </select>
               <small>{featuredBadgeSaving ? 'שומר בחירה…' : earnedTopicChallenges.length ? 'אפשר להחליף בכל עת בין הבאדג׳ים שהרווחת.' : 'השלם אתגר נושא כדי לבחור באדג׳ להצגה.'}</small>
