@@ -1220,7 +1220,7 @@ function App() {
     return { topic, badgeId, earnedAt, count, progress: Math.min(100, Math.round((count / TOPIC_CHALLENGE_GOAL) * 100)), earned: Boolean(earnedAt) || count >= TOPIC_CHALLENGE_GOAL };
   });
   const earnedTopicChallenges = topicChallenges.filter(challenge => challenge.earnedAt);
-  const featuredChallengeBadge = earnedTopicChallenges.find(challenge => challenge.badgeId === currentUser?.selectedChallengeBadgeId)
+  const featuredChallengeBadge = topicChallenges.find(challenge => challenge.badgeId === currentUser?.selectedChallengeBadgeId)
     || [...earnedTopicChallenges].sort((first, second) => new Date(second.earnedAt || 0) - new Date(first.earnedAt || 0))[0]
     || null;
   const earnedTopicBadgeCount = topicChallenges.filter(challenge => challenge.earnedAt).length;
@@ -1428,18 +1428,19 @@ function App() {
               <span className="badge-copy"><strong>{currentActivityLevel.name}</strong><small>רמת פעילות</small></span>
             </span>
           </div>
-          {featuredChallengeBadge ? <div className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} title={`באדג׳ האתגר שלי: ${featuredChallengeBadge.topic}`}>
-            <span className={`identity-user-mark challenge-mark-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[TOPICS.indexOf(featuredChallengeBadge.topic)]}</span>
-            <span className="badge-copy"><strong>{featuredChallengeBadge.topic}</strong><small>באדג׳ אתגר</small></span>
-          </div> : crestEarned && <div className="user-badge identity-user-badge" title={`סמל הזהות שלי: ${visibleIdentityDirection.name}`}>
+          {crestEarned && <div className="user-badge identity-user-badge" title={`סמל הזהות שלי: ${visibleIdentityDirection.name}`}>
             <span className="identity-user-mark" aria-hidden="true" style={{ '--topic-mix': topicMixGradient }}>{visibleIdentityDirection.icon}</span>
             <span className="badge-copy"><strong>{visibleIdentityDirection.name}</strong><small>הסמל האישי שלך</small></span>
+          </div>}
+          {featuredChallengeBadge && <div className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} title={`באדג׳ האתגר שלי: ${featuredChallengeBadge.topic}`}>
+            <span className={`identity-user-mark challenge-mark-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[TOPICS.indexOf(featuredChallengeBadge.topic)]}</span>
+            <span className="badge-copy"><strong>{featuredChallengeBadge.topic}</strong><small>באדג׳ אתגר</small></span>
           </div>}
         </div>
         <div className="hero-count"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
       </header>
 
-      <nav className={`main-nav ${isMobileNavOpen ? 'is-open' : ''}`} aria-label="ניווט ראשי">
+      <nav className={`main-nav ${isMobileNavOpen ? 'is-open' : ''} ${isPublicProfileOpen ? 'is-profile-open' : ''}`} aria-label="ניווט ראשי">
         <button className="mobile-nav-toggle" type="button" aria-expanded={isMobileNavOpen} aria-controls="main-nav-links" onClick={() => setIsMobileNavOpen(open => !open)}>
           <span className={`hamburger-icon ${isMobileNavOpen ? 'is-open' : ''}`} aria-hidden="true"><i /><i /><i /></span>
           <span>{isMobileNavOpen ? 'סגירת תפריט' : 'ניווט באתר'}</span>
@@ -1467,7 +1468,12 @@ function App() {
       </section>
       <section className="achievement-wall" aria-labelledby="achievement-wall-title">
         <div className="achievement-wall-heading"><div><span className="section-kicker">ההישגים שלך</span><h2 id="achievement-wall-title">קיר הבאדג׳ים</h2></div><span>{earnedTopicBadgeCount} / {TOPICS.length} נפתחו</span></div>
-        <div className="achievement-badge-grid">{topicChallenges.map((challenge, index) => <article key={challenge.badgeId} className={`achievement-badge ${challenge.earnedAt ? 'is-earned' : 'is-hidden'}`}>
+        <div className="achievement-badge-grid">{crestEarned && <article className="achievement-badge is-earned">
+          <span className="achievement-badge-art" aria-hidden="true">{visibleIdentityDirection.icon}</span>
+          <strong>{visibleIdentityDirection.name}</strong>
+          <small>סמל הזהות שלך</small>
+          <span className="achievement-badge-state">פעיל</span>
+        </article>}{topicChallenges.map((challenge, index) => <article key={challenge.badgeId} className={`achievement-badge ${challenge.earnedAt ? 'is-earned' : 'is-hidden'}`}>
           <span className={`achievement-badge-art challenge-mark-${index}`} aria-hidden="true">{challenge.earnedAt ? TOPIC_CHALLENGE_ICONS[index] : '·'}</span>
           <strong>{challenge.earnedAt ? `אתגר ${challenge.topic}` : 'באדג׳ חבוי'}</strong>
           <small>{challenge.earnedAt ? `נפתח ${new Date(challenge.earnedAt).toLocaleDateString('he-IL')}` : `נושא ${challenge.topic}`}</small>
@@ -1596,7 +1602,7 @@ function App() {
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
         <div className="statistics-heading"><div><span className="section-kicker">הישגים משניים</span><h2 id="progress-title">ענפי זהות ואתגרי נושאים</h2></div>{sectionControls('progress', 'ענפי זהות ואתגרי נושאים')}</div>
         <div className={`identity-branches ${crestEarned ? 'is-crest-unlocked' : 'is-crest-locked'}`} aria-labelledby="identity-branches-title">
-          <div className="identity-branches-heading"><div><span className="section-kicker">{crestEarned ? 'השלב הבא בזהות' : 'מסלולי זהות נעולים'}</span><h3 id="identity-branches-title">התקדמות בתשעת ענפי הסמל האישי</h3><p className="identity-mode-caption">{crestEarned ? currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו' : 'פתחו את הסמל הבסיסי ב־20 נקודות פעילות כדי להתחיל לפתוח את תשעת הענפים.'}</p></div><span>{earnedIdentityDirections.filter(direction => direction.id !== 'crest-of-the-voice').length} מתוך 9 ענפים נפתחו</span></div>
+          <div className="identity-branches-heading"><div><span className="section-kicker">{crestEarned ? 'השלב הבא בזהות' : 'מסלולי זהות נעולים'}</span><h3 id="identity-branches-title">התקדמות בעשרת ענפי הסמל האישי</h3><p className="identity-mode-caption">{crestEarned ? currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו' : 'פתחו את הסמל הבסיסי ב־20 נקודות פעילות כדי להתחיל לפתוח את תשעת הענפים.'}</p></div><span>{earnedIdentityDirections.filter(direction => direction.id !== 'crest-of-the-voice').length} מתוך 9 ענפים נפתחו</span></div>
           {crestEarned && <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות הסמל">
             <button type="button" className={currentUser?.identityMode !== 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode !== 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('auto')}>התפתחות אוטומטית</button>
             <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
@@ -1900,9 +1906,8 @@ function App() {
         <section className="public-profile-modal" role="dialog" aria-modal="true" aria-labelledby="public-profile-title">
           <div className="public-profile-heading">
             <div className="public-profile-avatar" aria-hidden="true"><span>{AVATARS.find(avatar => avatar.id === publicProfile?.avatarId)?.emoji || AVATARS[0].emoji}</span><i>↩</i></div>
-            <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{publicProfile && <><small>{publicProfile.posts.length} פוסטים שפורסמו</small><div className="public-profile-meta">
+            <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><div className="public-profile-name-row"><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{getTopicChallengeBadge(publicProfile?.featuredChallengeBadgeId) && <span className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).index}`} title={`באדג׳ האתגר הנעוץ: ${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).topic}`}><span className={`identity-user-mark challenge-mark-${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).index}`} aria-hidden="true">{getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).icon}</span><span className="badge-copy"><strong>{getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).topic}</strong><small>באדג׳ אתגר</small></span></span>}</div>{publicProfile && <><small>{publicProfile.posts.length} פוסטים שפורסמו</small><div className="public-profile-meta">
               {publicProfile.rank && <span className={`user-badge public-profile-rank ${publicProfile.rank.className}`}><span className="badge-art" aria-hidden="true">{publicProfile.rank.icon}</span><span className="badge-copy"><strong>{publicProfile.rank.name}</strong><small>דרגת המגיב</small></span></span>}
-              {getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId) && <span className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).index}`} title={`באדג׳ האתגר הנעוץ: ${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).topic}`}><span className={`identity-user-mark challenge-mark-${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).index}`} aria-hidden="true">{getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).icon}</span><span className="badge-copy"><strong>{getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).topic}</strong><small>באדג׳ אתגר</small></span></span>}
               {publicProfile.joinedAt && <span className="public-profile-tenure">מגיב באתר מתאריך {new Date(publicProfile.joinedAt).toLocaleDateString('he-IL')}</span>}
             </div></>}</div>
             <button className="profile-modal-close" type="button" aria-label="סגירת הפרופיל" onClick={() => setIsPublicProfileOpen(false)}>×</button>

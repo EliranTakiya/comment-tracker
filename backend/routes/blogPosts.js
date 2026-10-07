@@ -9,10 +9,11 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(requireAuth);
+const CHALLENGE_BADGE_IDS = new Set(['news-general', 'sports', 'economy', 'politics', 'fashion', 'celebrities']);
 
 function featuredChallengeBadgeId(user) {
   const earned = user.earnedChallengeBadges || [];
-  if (earned.some(badge => badge.badgeId === user.selectedChallengeBadgeId)) return user.selectedChallengeBadgeId;
+  if (CHALLENGE_BADGE_IDS.has(user.selectedChallengeBadgeId)) return user.selectedChallengeBadgeId;
   const mostRecentEarned = earned.reduce((latest, badge) => {
     if (!latest) return badge;
     return new Date(badge.earnedAt || 0) >= new Date(latest.earnedAt || 0) ? badge : latest;

@@ -793,6 +793,7 @@ textarea { min-height: 96px; resize: vertical; }
 .public-profile-avatar i { position: absolute; right: -3px; bottom: -3px; display: grid; width: 21px; height: 21px; place-items: center; color: #fff; border: 2px solid var(--surface); border-radius: 50%; background: var(--mint-strong); font-size: 12px; font-style: normal; font-weight: 900; }
 .public-profile-title-group { min-width: 0; flex: 1; }
 .public-profile-title-group .section-kicker { display: block; }
+.public-profile-name-row { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 8px; }
 .public-profile-title-group h2 { margin: 0; overflow-wrap: anywhere; font-size: 21px; }
 .public-profile-title-group small { color: var(--muted); font-size: 12px; }
 .public-profile-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
@@ -1779,4 +1780,5 @@ body { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); }
   }
   .app.theme-night .main-nav { background: color-mix(in srgb, var(--surface) 52%, transparent); }
   .app.theme-night .main-nav.is-open { background: color-mix(in srgb, var(--surface) 96%, transparent); }
+  .main-nav.is-profile-open { visibility: hidden; pointer-events: none; }
 }

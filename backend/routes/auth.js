@@ -69,7 +69,7 @@ const CHALLENGE_TOPICS = [
 
 function featuredChallengeBadgeId(user) {
   const earned = user.earnedChallengeBadges || [];
-  if (earned.some(badge => badge.badgeId === user.selectedChallengeBadgeId)) return user.selectedChallengeBadgeId;
+  if (CHALLENGE_TOPICS.some(topic => topic.id === user.selectedChallengeBadgeId)) return user.selectedChallengeBadgeId;
   const mostRecentEarned = earned.reduce((latest, badge) => {
     if (!latest) return badge;
     return new Date(badge.earnedAt || 0) >= new Date(latest.earnedAt || 0) ? badge : latest;
