@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const BlogPost = require('../models/BlogPost');
 const BlogReaction = require('../models/BlogReaction');
 const Conversation = require('../models/Conversation');
+const Idea = require('../models/Idea');
 const User = require('../models/User');
 const TaskReward = require('../models/TaskReward');
 const { requireAuth } = require('../middleware/auth');
@@ -10,6 +11,7 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 const CHALLENGE_BADGE_IDS = new Set(['news-general', 'sports', 'economy', 'politics', 'fashion', 'celebrities']);
+const IDENTITY_DIRECTION_IDS = new Set(['crest-of-the-voice', 'the-axis', 'the-bloom', 'the-mark', 'the-crown', 'the-orbit', 'the-prism', 'the-seal', 'the-thread', 'the-sigil']);
 
 function featuredChallengeBadgeId(user) {
   const earned = user.earnedChallengeBadges || [];
@@ -19,6 +21,14 @@ function featuredChallengeBadgeId(user) {
     return new Date(badge.earnedAt || 0) >= new Date(latest.earnedAt || 0) ? badge : latest;
   }, null);
   return mostRecentEarned?.badgeId || null;
+}
+
+function featuredIdentityDirectionId(user, identityPoints) {
+  if (identityPoints < 20) return null;
+  const unlocked = new Set(user.unlockedIdentityDirections || []);
+  const selected = user.selectedIdentityDirection;
+  if (IDENTITY_DIRECTION_IDS.has(selected) && (selected === 'crest-of-the-voice' || unlocked.has(selected))) return selected;
+  return [...unlocked].reverse().find(id => id !== 'crest-of-the-voice' && IDENTITY_DIRECTION_IDS.has(id)) || 'crest-of-the-voice';
 }
 
 function getSourceSite(siteName, siteUrl) {
@@ -124,8 +134,8 @@ router.get('/', async (req, res) => {
 
 router.get('/leaderboard', async (req, res) => {
   try {
-    const [users, conversationTotals, blogTotals, reactionTotals, taskRewardTotals] = await Promise.all([
-      User.find().select('_id displayName avatarId selectedChallengeBadgeId earnedChallengeBadges').lean(),
+    const [users, conversationTotals, blogTotals, reactionTotals, taskRewardTotals, ideaTotals] = await Promise.all([
+      User.find().select('_id displayName avatarId selectedChallengeBadgeId earnedChallengeBadges selectedIdentityDirection unlockedIdentityDirections').lean(),
       Conversation.aggregate([
         { $group: { _id: '$userId', count: { $sum: 1 }, likesCount: { $sum: '$likesCount' }, dislikesCount: { $sum: '$dislikesCount' } } },
       ]),
@@ -152,11 +162,15 @@ router.get('/leaderboard', async (req, res) => {
       TaskReward.aggregate([
         { $group: { _id: '$userId', totalPoints: { $sum: '$points' } } },
       ]),
+      Idea.aggregate([
+        { $group: { _id: '$userId', ideasCount: { $sum: 1 }, ideaEntries: { $sum: { $size: { $ifNull: ['$entries', []] } } } } },
+      ]),
     ]);
     const conversationsByUser = new Map(conversationTotals.map(item => [item._id.toString(), item]));
     const blogsByUser = new Map(blogTotals.map(item => [item._id.toString(), item]));
     const reactionsByUser = new Map(reactionTotals.map(item => [item._id.toString(), item]));
     const taskRewardsByUser = new Map(taskRewardTotals.map(item => [item._id.toString(), item]));
+    const ideasByUser = new Map(ideaTotals.map(item => [item._id.toString(), item]));
     const badgeThresholds = [0, 20, 60, 150, 300];
     const badges = [
       { name: 'מתחיל', icon: '◯', className: 'beginner' },
@@ -171,6 +185,7 @@ router.get('/leaderboard', async (req, res) => {
       const blogs = blogsByUser.get(id) || {};
       const reactions = reactionsByUser.get(id) || {};
       const taskRewards = taskRewardsByUser.get(id) || {};
+      const ideas = ideasByUser.get(id) || {};
       const basePoints = Math.max(0,
         (conversations.count || 0)
         + (conversations.likesCount || 0) * 2
@@ -181,11 +196,13 @@ router.get('/leaderboard', async (req, res) => {
         - ((blogs.dislikesCount || 0) + (reactions.dislikesCount || 0)) * 2
       );
       const points = basePoints + (taskRewards.totalPoints || 0);
+      const identityPoints = points + (ideas.ideasCount || 0) * 5 + (ideas.ideaEntries || 0) * 2;
       const badgeIndex = badgeThresholds.reduce((result, threshold, index) => points >= threshold ? index : result, 0);
       return {
         id,
         displayName: user.displayName,
         avatarId: user.avatarId || 'comment-bubble',
+        featuredIdentityDirectionId: featuredIdentityDirectionId(user, identityPoints),
         featuredChallengeBadgeId: featuredChallengeBadgeId(user),
         points,
         rank: badges[badgeIndex],
@@ -201,9 +218,9 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/authors/:id', async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });
-    const user = await User.findById(req.params.id).select('displayName avatarId createdAt selectedChallengeBadgeId earnedChallengeBadges').lean();
+    const user = await User.findById(req.params.id).select('displayName avatarId createdAt selectedChallengeBadgeId earnedChallengeBadges selectedIdentityDirection unlockedIdentityDirections').lean();
     if (!user) return res.status(404).json({ message: 'Author not found' });
-    const [posts, conversationTotals, taskRewardTotals] = await Promise.all([
+    const [posts, conversationTotals, taskRewardTotals, ideaTotals] = await Promise.all([
       BlogPost.find({ ownerId: user._id })
       .select('ownerId author title content sourceTitle sourceUrl sourceConversationIds sourceLikesCount sourceDislikesCount likesCount dislikesCount comments createdAt')
       .sort({ createdAt: -1 }),
@@ -220,6 +237,10 @@ router.get('/authors/:id', async (req, res) => {
         { $match: { userId: user._id } },
         { $group: { _id: null, totalPoints: { $sum: '$points' } } },
       ]),
+      Idea.aggregate([
+        { $match: { userId: user._id } },
+        { $group: { _id: null, ideasCount: { $sum: 1 }, ideaEntries: { $sum: { $size: { $ifNull: ['$entries', []] } } } } },
+      ]),
     ]);
     const postsWithReactions = await attachReactionData(posts, req.user._id);
     const conversations = conversationTotals[0] || { count: 0, likesCount: 0, dislikesCount: 0 };
@@ -234,6 +255,7 @@ router.get('/authors/:id', async (req, res) => {
       + blogPoints
     );
     const totalPoints = basePoints + (taskRewardTotals[0]?.totalPoints || 0);
+    const identityPoints = totalPoints + (ideaTotals[0]?.ideasCount || 0) * 5 + (ideaTotals[0]?.ideaEntries || 0) * 2;
     const badgeThresholds = [0, 20, 60, 150, 300];
     const badges = [
       { name: 'מתחיל', icon: '○', className: 'beginner' },
@@ -249,6 +271,7 @@ router.get('/authors/:id', async (req, res) => {
       avatarId: user.avatarId || 'comment-bubble',
       joinedAt: user.createdAt,
       rank: badges[badgeIndex],
+      featuredIdentityDirectionId: featuredIdentityDirectionId(user, identityPoints),
       featuredChallengeBadgeId: featuredChallengeBadgeId(user),
       posts: postsWithReactions,
     });
