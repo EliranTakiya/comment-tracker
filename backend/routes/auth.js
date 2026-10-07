@@ -70,10 +70,11 @@ const CHALLENGE_TOPICS = [
 function publicUser(user) {
   const unlockedIdentityDirections = [...new Set(['crest-of-the-voice', ...(user.unlockedIdentityDirections || []).filter(id => IDENTITY_DIRECTIONS.includes(id))])];
   const selectedIdentityDirection = unlockedIdentityDirections.includes(user.selectedIdentityDirection) ? user.selectedIdentityDirection : 'crest-of-the-voice';
+  const identityMode = user.identityMode === 'custom' ? 'custom' : 'auto';
   const earnedChallengeBadges = (user.earnedChallengeBadges || []).map(badge => ({ badgeId: badge.badgeId, earnedAt: badge.earnedAt }));
   const earnedChallengeBadgeIds = new Set(earnedChallengeBadges.map(badge => badge.badgeId));
   const selectedChallengeBadgeId = earnedChallengeBadgeIds.has(user.selectedChallengeBadgeId) ? user.selectedChallengeBadgeId : null;
-  return { id: user._id.toString(), email: user.email, displayName: user.displayName, avatarId: user.avatarId || 'comment-bubble', theme: user.theme, selectedIdentityDirection, unlockedIdentityDirections, earnedChallengeBadges, selectedChallengeBadgeId };
+  return { id: user._id.toString(), email: user.email, displayName: user.displayName, avatarId: user.avatarId || 'comment-bubble', theme: user.theme, identityMode, selectedIdentityDirection, unlockedIdentityDirections, earnedChallengeBadges, selectedChallengeBadgeId };
 }
 
 async function syncIdentityProgress(user) {
@@ -127,6 +128,7 @@ async function syncIdentityProgress(user) {
   ].filter(Boolean) : [];
   const storedDirections = (user.unlockedIdentityDirections || []).filter(id => IDENTITY_DIRECTIONS.includes(id));
   const unlockedDirections = [...new Set(['crest-of-the-voice', ...storedDirections, ...earnedDirections])];
+  const newlyUnlockedDirections = earnedDirections.filter(id => !storedDirections.includes(id));
   const earnedChallengeBadges = [...(user.earnedChallengeBadges || [])];
   const knownChallengeBadges = new Set(earnedChallengeBadges.map(badge => badge.badgeId));
   CHALLENGE_TOPICS.forEach(topic => {
@@ -134,15 +136,19 @@ async function syncIdentityProgress(user) {
       earnedChallengeBadges.push({ badgeId: topic.id, earnedAt: new Date() });
     }
   });
-  const selectedDirection = unlockedDirections.includes(user.selectedIdentityDirection)
+  const identityMode = user.identityMode === 'custom' ? 'custom' : 'auto';
+  const mostRecentlyUnlockedDirection = [...unlockedDirections].reverse().find(id => id !== 'crest-of-the-voice') || 'crest-of-the-voice';
+  const selectedDirection = identityMode === 'custom' && unlockedDirections.includes(user.selectedIdentityDirection)
     ? user.selectedIdentityDirection
-    : 'crest-of-the-voice';
+    : newlyUnlockedDirections[newlyUnlockedDirections.length - 1] || (identityMode === 'auto' && !unlockedDirections.includes(user.selectedIdentityDirection) ? mostRecentlyUnlockedDirection : user.selectedIdentityDirection || 'crest-of-the-voice');
   if (JSON.stringify(storedDirections) !== JSON.stringify(unlockedDirections)
     || earnedChallengeBadges.length !== (user.earnedChallengeBadges || []).length
+    || user.identityMode !== identityMode
     || user.selectedIdentityDirection !== selectedDirection) {
     user.unlockedIdentityDirections = unlockedDirections;
     user.selectedIdentityDirection = selectedDirection;
     user.earnedChallengeBadges = earnedChallengeBadges;
+    user.identityMode = identityMode;
     await user.save();
   }
   return user;
@@ -305,6 +311,14 @@ router.put('/profile', requireAuth, async (req, res) => {
         return res.status(400).json({ message: 'Choose an unlocked identity direction' });
       }
       update.selectedIdentityDirection = selected;
+      if (req.body.identityMode === undefined) update.identityMode = 'custom';
+    }
+    if (req.body.identityMode !== undefined) {
+      if (!['auto', 'custom'].includes(req.body.identityMode)) return res.status(400).json({ message: 'Invalid identity mode' });
+      update.identityMode = req.body.identityMode;
+      if (req.body.identityMode === 'auto') {
+        update.selectedIdentityDirection = [...(identityUser.unlockedIdentityDirections || ['crest-of-the-voice'])].reverse().find(id => id !== 'crest-of-the-voice') || 'crest-of-the-voice';
+      }
     }
     const user = await User.findByIdAndUpdate(req.user._id, { $set: update }, { new: true, runValidators: true });
     res.json({ user: publicUser(user) });

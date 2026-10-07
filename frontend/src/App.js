@@ -24,15 +24,15 @@ const themes = [
 ];
 const IDENTITY_DIRECTIONS = [
   { id: 'crest-of-the-voice', name: 'חותם הקול', icon: '✦', description: 'החותם האישי שלך' },
-  { id: 'the-axis', name: 'הציר', icon: '◇', description: 'נבנה מתגובות ששמרת', unlock: stats => stats.comments >= 20 },
-  { id: 'the-bloom', name: 'הפריחה', icon: '✿', description: 'נבנית מרעיונות שפיתחת', unlock: stats => stats.ideas >= 3 && stats.ideaEntries >= 5 },
-  { id: 'the-mark', name: 'החותם', icon: '⌑', description: 'נבנה ממילים שפרסמת', unlock: stats => stats.posts >= 5 },
-  { id: 'the-crown', name: 'הכתר', icon: '♛', description: 'נבנה משיחות ותגובות שקיבלת', unlock: stats => stats.engagements >= 30 },
-  { id: 'the-orbit', name: 'המסלול', icon: '◎', description: 'נבנה מפעילות בשלושה נושאים', unlock: stats => stats.activeTopics >= 3 },
-  { id: 'the-prism', name: 'המנסרה', icon: '⬡', description: 'נבנית מפעילות בכל ששת הנושאים', unlock: stats => stats.activeTopics >= 6 },
-  { id: 'the-seal', name: 'חותם הדרך', icon: '◈', description: 'נבנה מהשלמת אתגרים', unlock: stats => stats.completedMissions >= 10 },
-  { id: 'the-thread', name: 'החוט', icon: '⌘', description: 'נבנה מחיבור פריטים לרעיונות', unlock: stats => stats.ideaEntries >= 10 },
-  { id: 'the-sigil', name: 'הסימן', icon: '✺', description: 'נבנה משבעה ימי פעילות רצופים', unlock: stats => stats.activityStreak >= 7 },
+  { id: 'the-axis', name: 'הציר', icon: '◇', description: 'נבנה מתגובות ששמרת', unlock: stats => stats.comments >= 20, progress: stats => ({ value: Math.min(stats.comments, 20), goal: 20, detail: `${Math.min(stats.comments, 20)} מתוך 20 תגובות שמורות` }) },
+  { id: 'the-bloom', name: 'הפריחה', icon: '✿', description: 'נבנית מרעיונות שפיתחת', unlock: stats => stats.ideas >= 3 && stats.ideaEntries >= 5, progress: stats => ({ value: Math.min(stats.ideas / 3, stats.ideaEntries / 5) * 100, goal: 100, detail: `${Math.min(stats.ideas, 3)} מתוך 3 רעיונות · ${Math.min(stats.ideaEntries, 5)} מתוך 5 פריטים בציר` }) },
+  { id: 'the-mark', name: 'החותם', icon: '⌑', description: 'נבנה ממילים שפרסמת', unlock: stats => stats.posts >= 5, progress: stats => ({ value: Math.min(stats.posts, 5), goal: 5, detail: `${Math.min(stats.posts, 5)} מתוך 5 פוסטים שפרסמת` }) },
+  { id: 'the-crown', name: 'הכתר', icon: '♛', description: 'נבנה משיחות ותגובות שקיבלת', unlock: stats => stats.engagements >= 30, progress: stats => ({ value: Math.min(stats.engagements, 30), goal: 30, detail: `${Math.min(stats.engagements, 30)} מתוך 30 תגובות ומעורבויות` }) },
+  { id: 'the-orbit', name: 'המסלול', icon: '◎', description: 'נבנה מפעילות בשלושה נושאים', unlock: stats => stats.activeTopics >= 3, progress: stats => ({ value: Math.min(stats.activeTopics, 3), goal: 3, detail: `${Math.min(stats.activeTopics, 3)} מתוך 3 נושאים עם תגובות` }) },
+  { id: 'the-prism', name: 'המנסרה', icon: '⬡', description: 'נבנית מפעילות בכל ששת הנושאים', unlock: stats => stats.activeTopics >= 6, progress: stats => ({ value: Math.min(stats.activeTopics, 6), goal: 6, detail: `${Math.min(stats.activeTopics, 6)} מתוך 6 נושאים עם תגובות` }) },
+  { id: 'the-seal', name: 'חותם הדרך', icon: '◈', description: 'נבנה מהשלמת אתגרים', unlock: stats => stats.completedMissions >= 10, progress: stats => ({ value: Math.min(stats.completedMissions, 10), goal: 10, detail: `${Math.min(stats.completedMissions, 10)} מתוך 10 משימות שהושלמו` }) },
+  { id: 'the-thread', name: 'החוט', icon: '⌘', description: 'נבנה מחיבור פריטים לרעיונות', unlock: stats => stats.ideaEntries >= 10, progress: stats => ({ value: Math.min(stats.ideaEntries, 10), goal: 10, detail: `${Math.min(stats.ideaEntries, 10)} מתוך 10 פריטים שחוברו לרעיונות` }) },
+  { id: 'the-sigil', name: 'הסימן', icon: '✺', description: 'נבנה משבעה ימי פעילות רצופים', unlock: stats => stats.activityStreak >= 7, progress: stats => ({ value: Math.min(stats.activityStreak, 7), goal: 7, detail: `${Math.min(stats.activityStreak, 7)} מתוך 7 ימים ברצף` }) },
 ];
 const CREST_UNLOCK_POINTS = 20;
 const TOPIC_CHALLENGE_GOAL = 5;
@@ -378,12 +378,28 @@ function App() {
     try {
       const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, {
         selectedIdentityDirection: directionId,
+        identityMode: 'custom',
       });
       setCurrentUser(response.data.user);
-      showSuccess('חותם הזהות עודכן');
+      showSuccess('החותם ננעץ על הענף שבחרת');
     } catch (err) {
       console.error('Save identity direction error:', err.response?.data || err.message);
       showSuccess('לא הצלחנו לשמור את בחירת החותם');
+    } finally {
+      setIdentitySaving(false);
+    }
+  };
+
+  const changeIdentityMode = async (identityMode) => {
+    if (identitySaving || currentUser?.identityMode === identityMode) return;
+    setIdentitySaving(true);
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { identityMode });
+      setCurrentUser(response.data.user);
+      showSuccess(identityMode === 'auto' ? 'החותם יחזור להתפתח אוטומטית' : 'בחר ענף זהות כדי לנעוץ אותו');
+    } catch (err) {
+      console.error('Save identity mode error:', err.response?.data || err.message);
+      showSuccess('לא הצלחנו לשנות את מצב התפתחות החותם');
     } finally {
       setIdentitySaving(false);
     }
@@ -1399,8 +1415,8 @@ function App() {
       </header>
 
       <section className={`crest-evolution ${crestEarned ? 'is-earned' : 'is-hidden'}`} id="identity" aria-labelledby="identity-title" style={{ '--topic-mix': topicMixGradient, '--crest-progress': `${identityProgress}%` }}>
-        <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
-        <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'הפרס שלך נחשף' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? 'החותם האישי שלך מורכב מהנושאים, הרעיונות והדרך שיצרת.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לחותם שכבה משלך.'}</p>
+        <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core"><span className="crest-core-fill" style={{ height: `${identityProgress}%` }} /><span className="crest-core-symbol">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
+        <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'החותם הבסיסי נפתח · הזהות ממשיכה להתפתח' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? currentUser?.identityMode === 'custom' ? 'החותם נעוץ על הענף שבחרת. בכל עת אפשר לחזור להתפתחות אוטומטית.' : 'החותם משתנה אוטומטית כשהפעילות שלך פותחת ענפי זהות. אפשר גם לנעוץ ענף פתוח לבחירתך.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לחותם שכבה משלך.'}</p>
           <div className="crest-progress-heading"><span>{crestEarned ? 'החותם נפתח' : 'התקדמות לחשיפה'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לפתיחת החותם האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
         </div>
@@ -1555,12 +1571,23 @@ function App() {
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
         <div className="statistics-heading"><div><span className="section-kicker">הישגים משניים</span><h2 id="progress-title">ענפי זהות ואתגרי נושאים</h2></div>{sectionControls('progress', 'ענפי זהות ואתגרי נושאים')}</div>
         {crestEarned && <div className="identity-branches" aria-labelledby="identity-branches-title">
-          <div className="identity-branches-heading"><div><span className="section-kicker">ענפי זהות</span><h3 id="identity-branches-title">כיוונים שנפתחים מתוך הדרך שלך</h3></div><span>{availableIdentityDirectionIds.length} / {IDENTITY_DIRECTIONS.length}</span></div>
+          <div className="identity-branches-heading"><div><span className="section-kicker">השלב הבא בזהות</span><h3 id="identity-branches-title">התקדמות בתשעת ענפי ה־Crest</h3><p className="identity-mode-caption">{currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · החותם עובר לענף חדש כשאתה פותח אותו'}</p></div><span>{availableIdentityDirectionIds.length} מתוך {IDENTITY_DIRECTIONS.length} פתוחים</span></div>
+          <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות החותם">
+            <button type="button" className={currentUser?.identityMode !== 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode !== 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('auto')}>התפתחות אוטומטית</button>
+            <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
+          </div>
           <div className="identity-direction-grid">{IDENTITY_DIRECTIONS.map((direction, index) => {
+            if (direction.id === 'crest-of-the-voice') return null;
             const earned = earnedIdentityDirectionIds.includes(direction.id) || storedIdentityDirectionIds.includes(direction.id);
             const selected = visibleIdentityDirection.id === direction.id;
+            const branchProgress = direction.progress(identityStats);
+            const progressPercent = branchProgress.goal === 100
+              ? Math.round(branchProgress.value)
+              : Math.round((branchProgress.value / branchProgress.goal) * 100);
             return <button type="button" key={direction.id} className={`identity-direction ${earned ? 'is-earned' : 'is-locked'} ${selected ? 'is-selected' : ''}`} aria-pressed={selected} disabled={!earned || identitySaving} onClick={() => changeIdentityDirection(direction.id)}>
-              <span className={`identity-direction-mark identity-mark-${index}`} aria-hidden="true">{earned ? direction.icon : '·'}</span><strong>{earned ? direction.name : 'ענף חבוי'}</strong><small>{direction.description}</small><span className="identity-direction-state">{selected ? 'החותם שלך' : earned ? 'נפתח' : 'נבנה לאורך הדרך'}</span>
+              <span className={`identity-direction-mark identity-mark-${index}`} aria-hidden="true">{earned ? direction.icon : '·'}</span><strong>{direction.name}</strong><small>{direction.description}</small>
+              {!earned && <><span className="identity-branch-progress-copy">{branchProgress.detail}</span><span className="identity-branch-track" role="progressbar" aria-label={`התקדמות לפתיחת ${direction.name}`} aria-valuenow={progressPercent} aria-valuemin="0" aria-valuemax="100"><i style={{ width: `${progressPercent}%` }} /></span></>}
+              <span className="identity-direction-state">{selected ? currentUser?.identityMode === 'custom' ? 'הענף הנעוץ שלך' : 'הענף הפעיל · אוטומטי' : earned ? 'נפתח · לחצו לנעיצה' : `${progressPercent}% בדרך`}</span>
             </button>;
           })}</div>
         </div>}
