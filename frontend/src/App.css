@@ -1095,7 +1095,7 @@ body { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); }
   .hero { display: grid; grid-template-columns: 55px minmax(0,1fr); grid-template-areas: 'brand profile' 'copy copy'; align-items: center; gap: 8px 12px; padding: 0 0 12px; }
   .theme-picker { grid-area: brand; align-self: start; }
   .hero-copy { grid-area: copy; width: 100%; min-width: 0; text-align: center; }
-  .hero-profile { grid-area: profile; display: flex; min-width: 0; align-items: center; flex-direction: row; justify-content: flex-start; margin: 0; }
+  .hero-profile { grid-area: profile; display: flex; min-width: 0; align-items: center; flex-direction: row; justify-content: flex-end; margin: 0; }
   .nickname-button { max-width: 100%; padding: 6px 10px; font-size: 12px; }
   .hero h1 { max-width: 100%; margin-inline: auto; font-size: 23px; line-height: 1.16; text-wrap: balance; overflow-wrap: anywhere; }
   .hero-subtitle { max-width: 330px; margin: 5px auto 0; font-size: 12px; line-height: 1.5; }
@@ -1117,7 +1117,8 @@ body { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); }
   .achievement-wall { padding: 14px 10px 16px; }
   .achievement-badge-grid { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; }
   .achievement-badge { min-height: 128px; padding: 9px 5px; }
-  .main-nav { border-color: #d1daf6; background: rgba(239,243,255,.96); }
+  .main-nav { border-color: color-mix(in srgb, var(--accent) 20%, transparent); background: color-mix(in srgb, var(--page-bg) 74%, transparent); box-shadow: 0 8px 22px rgba(48,43,70,.08); backdrop-filter: blur(16px) saturate(1.15); -webkit-backdrop-filter: blur(16px) saturate(1.15); transition: background .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  .main-nav:has(.main-nav-links.is-open) { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); background: color-mix(in srgb, var(--surface) 95%, transparent); box-shadow: 0 10px 28px rgba(48,43,70,.14); }
   .mobile-nav-toggle { color: #33477f; }
   .mobile-nav-toggle:hover, .mobile-nav-toggle[aria-expanded="true"] { color: #304db9; background: #e5ebff; }
   .nav-toggle-hint { color: #405fd2; }
@@ -1143,6 +1144,37 @@ body { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); }
   .topic-challenge-heading strong { font-size: 11px; }
   .topic-challenge-footer { font-size: 8px; }
   .achievement-badge-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+.hero-name-stack { display: grid; justify-items: center; gap: 5px; min-width: 0; }
+.hero-activity-level { margin-top: 0; padding: 4px 9px 4px 5px; box-shadow: 0 2px 8px rgba(50,45,60,.1); }
+.hero-activity-level.beginner { border-color: #d9c37c; background: #fff9df; }
+.hero-activity-level.beginner .badge-art { color: #fff; border-color: #fff2a8; background: #c59b25; }
+.hero-activity-level.beginner .badge-copy strong { color: #765f16; }
+.hero-activity-level.beginner .badge-copy small { color: #a0832e; }
+.hero-activity-level.active { border-color: #a9d8c1; background: #effbf4; }
+.hero-activity-level.active .badge-art { border-color: #e2f5e9; background: #39976d; }
+.hero-activity-level.active .badge-copy strong { color: #237351; }
+.hero-activity-level.active .badge-copy small { color: #548c70; }
+.hero-activity-level.commenter { border-color: #9ebfdc; background: #eef6ff; }
+.hero-activity-level.commenter .badge-art { border-color: #dfeeff; background: #477fae; }
+.hero-activity-level.commenter .badge-copy strong { color: #315e86; }
+.hero-activity-level.commenter .badge-copy small { color: #6484a0; }
+.hero-activity-level.veteran { border-color: #cda6df; background: #faf0ff; }
+.hero-activity-level.veteran .badge-art { border-color: #f0dff8; background: #8755a6; }
+.hero-activity-level.veteran .badge-copy strong { color: #693d84; }
+.hero-activity-level.veteran .badge-copy small { color: #9774aa; }
+.hero-activity-level.super { border-color: #e5a879; background: #fff1e8; }
+.hero-activity-level.super .badge-art { border-color: #ffe2cc; background: #d46b35; }
+.hero-activity-level.super .badge-copy strong { color: #a64b20; }
+.hero-activity-level.super .badge-copy small { color: #c17a53; }
+@media (max-width: 700px) {
+  .hero-profile { gap: 8px; }
+  .hero-name-stack { flex: 0 1 auto; }
+  .hero-activity-level { gap: 5px; padding: 3px 7px 3px 4px; }
+  .hero-activity-level .badge-art { width: 22px; height: 22px; flex-basis: 22px; font-size: 12px; }
+  .hero-activity-level .badge-copy strong { font-size: 10px; }
+  .hero-activity-level .badge-copy small { font-size: 8px; }
 }
 
 /* Four persistent, warm theme palettes. */
@@ -1638,12 +1670,31 @@ body { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); }
 .identity-mode-switch button.is-selected { color: var(--accent-strong); background: var(--surface); box-shadow: 0 1px 5px rgba(36,34,55,.14), inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, white); }
 .identity-mode-switch button:disabled { cursor: wait; opacity: .65; }
 .identity-direction.is-selected:not(.is-earned) { cursor: default; }
+.activity-level-panel { --level-accent: #6579d8; margin-top: 22px; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--level-accent) 28%, var(--line)); border-inline-start: 4px solid var(--level-accent); background: linear-gradient(115deg, color-mix(in srgb, var(--surface) 86%, var(--level-accent)), var(--surface) 72%); }
+.activity-level-panel.level-active { --level-accent: #3a91a1; }
+.activity-level-panel.level-commenter { --level-accent: #536fc5; }
+.activity-level-panel.level-veteran { --level-accent: #a75a82; }
+.activity-level-panel.level-super { --level-accent: #bd8738; }
+.activity-level-heading { display: flex; align-items: center; gap: 11px; }
+.activity-level-emblem { display: grid; width: 43px; height: 43px; flex: 0 0 43px; place-items: center; color: #fff9e9; border: 1px solid color-mix(in srgb, var(--level-accent) 72%, white); background: linear-gradient(145deg, color-mix(in srgb, var(--level-accent) 72%, white), var(--level-accent) 58%, color-mix(in srgb, var(--level-accent) 56%, #26314e)); box-shadow: inset 0 1px rgba(255,255,255,.58), 0 4px 10px color-mix(in srgb, var(--level-accent) 18%, transparent); clip-path: polygon(50% 0,94% 17%,88% 72%,50% 100%,12% 72%,6% 17%); font-size: 19px; }
+.activity-level-heading > div { display: grid; min-width: 0; gap: 1px; }
+.activity-level-heading .section-kicker { margin: 0; color: var(--level-accent); font-size: 9px; }
+.activity-level-heading h3 { margin: 0; color: var(--ink); font-size: 16px; }
+.activity-level-points { margin-inline-start: auto; color: var(--level-accent); font: 700 23px 'Space Grotesk',sans-serif; white-space: nowrap; }
+.activity-level-points small { font: 700 10px 'Heebo',sans-serif; }
+.activity-level-next { margin: 12px 0 7px; color: var(--muted); font-size: 11px; }
+.activity-level-next strong { color: var(--level-accent); }
+.activity-level-track { height: 8px; border-color: color-mix(in srgb, var(--level-accent) 24%, var(--line)); background: color-mix(in srgb, var(--level-accent) 10%, var(--surface)); }
+.activity-level-track span { background: linear-gradient(90deg, color-mix(in srgb, var(--level-accent) 55%, white), var(--level-accent)); box-shadow: 0 0 10px color-mix(in srgb, var(--level-accent) 25%, transparent); }
+.activity-level-caption { display: flex; justify-content: space-between; gap: 10px; margin-top: 5px; color: var(--muted); font-size: 9px; }
+.activity-level-next.is-max-level { margin-bottom: 0; color: var(--level-accent); font-weight: 700; }
 @media (max-width: 700px) {
   .identity-direction { min-height: 166px; }
   .identity-direction-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .identity-branches-heading { align-items: flex-start; }
   .identity-mode-switch { display: flex; width: 100%; max-width: 340px; }
   .identity-mode-switch button { flex: 1; padding-inline: 8px; }
+  .activity-level-panel { margin-top: 17px; padding: 13px 12px; }
 }
 
 /* Warm metal and sunstone enamel separate the Crest from its cool cosmic field. */
@@ -1692,3 +1743,40 @@ body { background: linear-gradient(180deg, #f8faff 0%, #f0f4ff 100%); }
 .crest-core-symbol { position: relative; z-index: 3; display: grid; width: 100%; height: 100%; place-items: center; }
 .crest-core::before, .crest-core::after { z-index: 2; transition: color .4s, text-shadow .4s; }
 .crest-evolution.is-earned .crest-artwork .crest-core-fill { height: 100% !important; opacity: 1; }
+
+@media (max-width: 700px) {
+  .app { padding-top: 12px; }
+  .main-nav {
+    position: sticky;
+    top: max(7px, env(safe-area-inset-top));
+    z-index: 50;
+    width: 100%;
+    margin: 0 0 14px;
+    border: 1px solid rgba(100,121,185,.24);
+    border-radius: 14px;
+    background: rgba(255,250,244,.96);
+    box-shadow: 0 7px 20px rgba(54,54,83,.13);
+    backdrop-filter: blur(14px);
+  }
+  .app.theme-night .main-nav { background: rgba(65,58,78,.97); }
+  .main-nav-links.is-open { max-height: min(58dvh, 430px); overflow-y: auto; overscroll-behavior: contain; }
+  .app [id] { scroll-margin-top: calc(82px + env(safe-area-inset-top)); }
+}
+
+@media (max-width: 700px) {
+  .main-nav {
+    border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+    background: color-mix(in srgb, var(--surface) 48%, transparent);
+    box-shadow: 0 4px 14px rgba(54,54,83,.07);
+    backdrop-filter: blur(20px) saturate(1.35);
+    -webkit-backdrop-filter: blur(20px) saturate(1.35);
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .main-nav.is-open {
+    border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    box-shadow: 0 9px 24px rgba(54,54,83,.15);
+  }
+  .app.theme-night .main-nav { background: color-mix(in srgb, var(--surface) 52%, transparent); }
+  .app.theme-night .main-nav.is-open { background: color-mix(in srgb, var(--surface) 96%, transparent); }
+}

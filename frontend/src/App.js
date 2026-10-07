@@ -40,6 +40,13 @@ const IDENTITY_DIRECTIONS = [
 ];
 const CREST_UNLOCK_POINTS = 20;
 const TOPIC_CHALLENGE_GOAL = 5;
+const ACTIVITY_LEVELS = [
+  { name: 'מתחיל', icon: '○', min: 0, className: 'beginner' },
+  { name: 'מגיב פעיל', icon: '✦', min: 20, className: 'active' },
+  { name: 'טוקבקיסט', icon: '◆', min: 60, className: 'commenter' },
+  { name: 'טוקבקיסט ותיק', icon: '★', min: 150, className: 'veteran' },
+  { name: 'טוקבקיסט על', icon: '✹', min: 300, className: 'super' },
+];
 
 const getLocalDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const normalizeSiteName = (siteName) => String(siteName || '').trim().toLocaleLowerCase();
@@ -1127,6 +1134,12 @@ function App() {
     + pointsFromBlogPosts + pointsFromBlogComments + pointsFromBlogLikes + pointsFromBlogDislikes;
   const taskRewardPoints = taskRewards.totalPoints || 0;
   const totalPoints = Math.max(0, rawPoints) + taskRewardPoints;
+  const activityLevelIndex = ACTIVITY_LEVELS.reduce((result, level, index) => totalPoints >= level.min ? index : result, 0);
+  const currentActivityLevel = ACTIVITY_LEVELS[activityLevelIndex];
+  const nextActivityLevel = ACTIVITY_LEVELS[activityLevelIndex + 1] || null;
+  const activityLevelProgress = nextActivityLevel
+    ? Math.round(((totalPoints - currentActivityLevel.min) / (nextActivityLevel.min - currentActivityLevel.min)) * 100)
+    : 100;
   const currentAvatar = AVATARS.find(avatar => avatar.id === currentUser?.avatarId) || AVATARS[0];
   const statisticsConvos = statisticsTopicFilter === 'all'
     ? convos
@@ -1184,7 +1197,6 @@ function App() {
   const earnedIdentityDirectionKey = earnedIdentityDirectionIds.join('|');
   const currentUserId = currentUser?.id;
   const storedIdentityDirectionIds = currentUser?.unlockedIdentityDirections || [];
-  const availableIdentityDirectionIds = [...new Set([...storedIdentityDirectionIds, ...earnedIdentityDirectionIds])];
   const selectedIdentityDirection = IDENTITY_DIRECTIONS.find(direction => direction.id === currentUser?.selectedIdentityDirection)
     || IDENTITY_DIRECTIONS[0];
   const visibleIdentityDirection = earnedIdentityDirectionIds.includes(selectedIdentityDirection.id)
@@ -1384,6 +1396,7 @@ function App() {
       <header className="hero" id="home">
         <div className="theme-picker">
           <button className="brand-mark" onClick={() => setShowThemeMenu(!showThemeMenu)} aria-label="בחירת רקע" aria-expanded={showThemeMenu}>CT</button>
+          <span className="beta-label" dir="ltr">(Beta)</span>
           {showThemeMenu && <div className="theme-menu">
             <strong>בחרו אווירה</strong>
             {themes.map(option => <button key={option.value} className={theme === option.value ? 'selected' : ''} onClick={() => changeTheme(option.value)}>
@@ -1398,17 +1411,23 @@ function App() {
           <div className="hero-count-compact"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
         </div>
         <div className="nickname-area hero-profile">
-          {isEditingNickname ? (
-            <div className="nickname-editor">
-              <input autoFocus maxLength="80" value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') saveNickname(); if (event.key === 'Escape') { setNicknameDraft(nickname); setIsEditingNickname(false); } }} placeholder="הקלידו כינוי" aria-label="כינוי" />
-              <button type="button" onClick={saveNickname}>שמור</button>
-              <button type="button" className="nickname-cancel-button" onClick={() => { setNicknameDraft(nickname); setIsEditingNickname(false); }}>ביטול</button>
-            </div>
-          ) : (
-            <button className={`nickname-button ${nickname ? 'has-nickname' : ''}`} style={{ '--avatar-emoji': JSON.stringify(currentAvatar.emoji) }} onClick={nickname ? startNicknameEdit : () => { setNicknameDraft(''); setIsEditingNickname(true); }}>
-              {nickname || 'צור כינוי'}
-            </button>
-          )}
+          <div className="hero-name-stack">
+            {isEditingNickname ? (
+              <div className="nickname-editor">
+                <input autoFocus maxLength="80" value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') saveNickname(); if (event.key === 'Escape') { setNicknameDraft(nickname); setIsEditingNickname(false); } }} placeholder="הקלידו כינוי" aria-label="כינוי" />
+                <button type="button" onClick={saveNickname}>שמור</button>
+                <button type="button" className="nickname-cancel-button" onClick={() => { setNicknameDraft(nickname); setIsEditingNickname(false); }}>ביטול</button>
+              </div>
+            ) : (
+              <button className={`nickname-button ${nickname ? 'has-nickname' : ''}`} style={{ '--avatar-emoji': JSON.stringify(currentAvatar.emoji) }} onClick={nickname ? startNicknameEdit : () => { setNicknameDraft(''); setIsEditingNickname(true); }}>
+                {nickname || 'צור כינוי'}
+              </button>
+            )}
+            <span className={`user-badge hero-activity-level ${currentActivityLevel.className}`} title={`רמת הפעילות: ${currentActivityLevel.name}`}>
+              <span className="badge-art" aria-hidden="true">{currentActivityLevel.icon}</span>
+              <span className="badge-copy"><strong>{currentActivityLevel.name}</strong><small>רמת פעילות</small></span>
+            </span>
+          </div>
           {featuredChallengeBadge ? <div className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} title={`באדג׳ האתגר שלי: ${featuredChallengeBadge.topic}`}>
             <span className={`identity-user-mark challenge-mark-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[TOPICS.indexOf(featuredChallengeBadge.topic)]}</span>
             <span className="badge-copy"><strong>{featuredChallengeBadge.topic}</strong><small>באדג׳ אתגר</small></span>
@@ -1419,6 +1438,17 @@ function App() {
         </div>
         <div className="hero-count"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
       </header>
+
+      <nav className={`main-nav ${isMobileNavOpen ? 'is-open' : ''}`} aria-label="ניווט ראשי">
+        <button className="mobile-nav-toggle" type="button" aria-expanded={isMobileNavOpen} aria-controls="main-nav-links" onClick={() => setIsMobileNavOpen(open => !open)}>
+          <span className={`hamburger-icon ${isMobileNavOpen ? 'is-open' : ''}`} aria-hidden="true"><i /><i /><i /></span>
+          <span>{isMobileNavOpen ? 'סגירת תפריט' : 'ניווט באתר'}</span>
+          <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
+        </button>
+        <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
+          <a className="nav-home" href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a className="nav-comments" href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a className="nav-statistics" href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a className="nav-tasks" href="#tasks" onClick={event => navigateToSection(event, 'tasks')}>המשימות שלי</a><a className="nav-ideas" href="#ideas" onClick={event => navigateToSection(event, 'ideas')}>מסע הרעיונות</a><a className="nav-recommendations" href="#recommendations" onClick={event => navigateToSection(event, 'recommendations')}>המלצות אישיות</a><a className="nav-progress" href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a className="nav-blog" href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a className="nav-community" href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a className="nav-leaderboard" href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a className="nav-settings" href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
+        </div>
+      </nav>
 
       <section className={`crest-evolution ${crestEarned ? 'is-earned' : 'is-hidden'}`} id="identity" aria-labelledby="identity-title" style={{ '--topic-mix': topicMixGradient, '--crest-progress': `${identityProgress}%` }}>
         <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core"><span className="crest-core-fill" style={{ height: `${identityProgress}%` }} /><span className="crest-core-symbol">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
@@ -1444,17 +1474,6 @@ function App() {
           <span className="achievement-badge-state">{challenge.earnedAt ? 'הושג' : 'עוד לא נפתח'}</span>
         </article>)}</div>
       </section>
-
-      <nav className="main-nav" aria-label="ניווט ראשי">
-        <button className="mobile-nav-toggle" type="button" aria-expanded={isMobileNavOpen} aria-controls="main-nav-links" onClick={() => setIsMobileNavOpen(open => !open)}>
-          <span className={`hamburger-icon ${isMobileNavOpen ? 'is-open' : ''}`} aria-hidden="true"><i /><i /><i /></span>
-          <span>{isMobileNavOpen ? 'סגירת תפריט' : 'ניווט באתר'}</span>
-          <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
-        </button>
-        <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a className="nav-home" href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a className="nav-comments" href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a className="nav-statistics" href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a className="nav-tasks" href="#tasks" onClick={event => navigateToSection(event, 'tasks')}>המשימות שלי</a><a className="nav-ideas" href="#ideas" onClick={event => navigateToSection(event, 'ideas')}>מסע הרעיונות</a><a className="nav-recommendations" href="#recommendations" onClick={event => navigateToSection(event, 'recommendations')}>המלצות אישיות</a><a className="nav-progress" href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a className="nav-blog" href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a className="nav-community" href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a className="nav-leaderboard" href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a className="nav-settings" href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
-        </div>
-      </nav>
 
       <div className="dashboard-sections">
       <div className={`dashboard-panel ${collapsedDashboardSections.statistics ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('statistics') }}>
@@ -1576,13 +1595,14 @@ function App() {
       <div className={`dashboard-panel ${collapsedDashboardSections.progress ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('progress') }}>
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
         <div className="statistics-heading"><div><span className="section-kicker">הישגים משניים</span><h2 id="progress-title">ענפי זהות ואתגרי נושאים</h2></div>{sectionControls('progress', 'ענפי זהות ואתגרי נושאים')}</div>
-        {crestEarned && <div className="identity-branches" aria-labelledby="identity-branches-title">
-          <div className="identity-branches-heading"><div><span className="section-kicker">השלב הבא בזהות</span><h3 id="identity-branches-title">התקדמות בתשעת ענפי ה־Crest</h3><p className="identity-mode-caption">{currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו'}</p></div><span>{availableIdentityDirectionIds.length} מתוך {IDENTITY_DIRECTIONS.length} פתוחים</span></div>
-          <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות הסמל">
+        <div className={`identity-branches ${crestEarned ? 'is-crest-unlocked' : 'is-crest-locked'}`} aria-labelledby="identity-branches-title">
+          <div className="identity-branches-heading"><div><span className="section-kicker">{crestEarned ? 'השלב הבא בזהות' : 'מסלולי זהות נעולים'}</span><h3 id="identity-branches-title">התקדמות בתשעת ענפי הסמל האישי</h3><p className="identity-mode-caption">{crestEarned ? currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו' : 'פתחו את הסמל הבסיסי ב־20 נקודות פעילות כדי להתחיל לפתוח את תשעת הענפים.'}</p></div><span>{earnedIdentityDirections.filter(direction => direction.id !== 'crest-of-the-voice').length} מתוך 9 ענפים נפתחו</span></div>
+          {crestEarned && <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות הסמל">
             <button type="button" className={currentUser?.identityMode !== 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode !== 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('auto')}>התפתחות אוטומטית</button>
             <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
-          </div>
+          </div>}
           <div className="identity-direction-grid">{IDENTITY_DIRECTIONS.map((direction, index) => {
+            if (direction.id === 'crest-of-the-voice') return null;
             const earned = earnedIdentityDirectionIds.includes(direction.id) || storedIdentityDirectionIds.includes(direction.id);
             const selected = visibleIdentityDirection.id === direction.id;
             const branchProgress = direction.id === 'crest-of-the-voice'
@@ -1594,10 +1614,22 @@ function App() {
             return <button type="button" key={direction.id} className={`identity-direction ${earned ? 'is-earned' : 'is-locked'} ${selected ? 'is-selected' : ''}`} aria-pressed={selected} disabled={!earned || identitySaving} onClick={() => changeIdentityDirection(direction.id)}>
               <span className={`identity-direction-mark identity-mark-${index}`} aria-hidden="true">{earned ? direction.icon : '·'}</span><strong>{direction.name}</strong><small>{direction.description}</small>
               {!earned && <><span className="identity-branch-progress-copy">{branchProgress.detail}</span><span className="identity-branch-track" role="progressbar" aria-label={`התקדמות לפתיחת ${direction.name}`} aria-valuenow={progressPercent} aria-valuemin="0" aria-valuemax="100"><i style={{ width: `${progressPercent}%` }} /></span></>}
-              <span className="identity-direction-state">{selected ? currentUser?.identityMode === 'custom' ? 'הענף הנעוץ שלך' : 'הענף הפעיל · אוטומטי' : earned ? 'נפתח · לחצו לנעיצה' : `${progressPercent}% בדרך`}</span>
+              <span className="identity-direction-state">{!crestEarned ? 'ייפתח אחרי גילוי הסמל' : selected ? currentUser?.identityMode === 'custom' ? 'הענף הנעוץ שלך' : 'הענף הפעיל · אוטומטי' : earned ? 'נפתח · לחצו לנעיצה' : `${progressPercent}% בדרך`}</span>
             </button>;
           })}</div>
-        </div>}
+        </div>
+        <section className={`activity-level-panel level-${currentActivityLevel.className}`} aria-labelledby="activity-level-title">
+          <div className="activity-level-heading">
+            <span className="activity-level-emblem" aria-hidden="true">{currentActivityLevel.icon}</span>
+            <div><span className="section-kicker">רמת הפעילות הכללית</span><h3 id="activity-level-title">{currentActivityLevel.name}</h3></div>
+            <strong className="activity-level-points">{totalPoints}<small> נק׳</small></strong>
+          </div>
+          {nextActivityLevel ? <>
+            <p className="activity-level-next">עוד <strong>{nextActivityLevel.min - totalPoints}</strong> נקודות לדרגת <strong>{nextActivityLevel.name}</strong></p>
+            <div className="progress-track activity-level-track" role="progressbar" aria-label={`התקדמות מדרגת ${currentActivityLevel.name} לדרגת ${nextActivityLevel.name}`} aria-valuenow={activityLevelProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${activityLevelProgress}%` }} /></div>
+            <div className="activity-level-caption"><span>{activityLevelProgress}% לרמה הבאה</span><span>{totalPoints} / {nextActivityLevel.min} נקודות</span></div>
+          </> : <p className="activity-level-next is-max-level">הגעת לדרגת הפעילות הגבוהה ביותר.</p>}
+        </section>
         <div className="progress-summary"><strong>{totalPoints}</strong><span>נקודות פעילות</span></div>
       </section>
 
