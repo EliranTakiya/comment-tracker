@@ -2,7 +2,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function setupProxy(app) {
   app.use('/api', createProxyMiddleware({
-    target: 'https://comment-tracker-backend.onrender.com',
+    target: process.env.COMMENT_TRACKER_API_PROXY || 'http://localhost:5000',
     changeOrigin: true,
     onProxyReq(proxyReq) {
       proxyReq.setHeader('Origin', 'https://comment-tracker-frontend.onrender.com');
