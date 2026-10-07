@@ -8,6 +8,10 @@ const API_BASE_URL = '';
 const TOPICS = ['חדשות כללי', 'ספורט', 'כלכלה', 'פוליטיקה', 'אופנה', 'סלבס'];
 const TOPIC_CHALLENGE_BADGE_IDS = ['news-general', 'sports', 'economy', 'politics', 'fashion', 'celebrities'];
 const TOPIC_CHALLENGE_ICONS = ['◉', '⬟', '⌁', '✥', '❖', '◌'];
+const getTopicChallengeBadge = badgeId => {
+  const index = TOPIC_CHALLENGE_BADGE_IDS.indexOf(badgeId);
+  return index < 0 ? null : { topic: TOPICS[index], icon: TOPIC_CHALLENGE_ICONS[index], index };
+};
 const DATE_FILTERS = [
   { value: 'all', label: 'כל התאריכים' },
   { value: 'today', label: 'היום' },
@@ -1682,9 +1686,11 @@ function App() {
               <thead><tr><th scope="col">מקום</th><th scope="col">מגיב/ה</th><th scope="col">נקודות</th><th scope="col">דרגה</th></tr></thead>
               <tbody>{globalLeaderboard.map(user => {
                 const avatar = AVATARS.find(item => item.id === user.avatarId) || AVATARS[0];
+                const pinnedBadgeIndex = TOPIC_CHALLENGE_BADGE_IDS.indexOf(user.featuredChallengeBadgeId);
+                const pinnedBadgeTopic = pinnedBadgeIndex >= 0 ? TOPICS[pinnedBadgeIndex] : null;
                 return <tr key={user.id} className={user.id === currentUser.id ? 'is-current-user' : ''}>
                   <td className="leaderboard-position" data-label="מקום"><span>{user.position <= 3 ? ['🥇', '🥈', '🥉'][user.position - 1] : user.position}</span></td>
-                  <td className="leaderboard-user-cell" data-label="מגיב/ה"><button className="leaderboard-user-link" type="button" onClick={() => openPublicProfile(user.id)}><span className="leaderboard-avatar" aria-hidden="true">{avatar.emoji}</span><strong>{user.displayName || 'מגיב/ה'}</strong>{user.id === currentUser.id && <small>זה/זו אני</small>}</button></td>
+                  <td className="leaderboard-user-cell" data-label="מגיב/ה"><button className="leaderboard-user-link" type="button" onClick={() => openPublicProfile(user.id)}><span className="leaderboard-avatar" aria-hidden="true">{avatar.emoji}</span><strong>{user.displayName || 'מגיב/ה'}</strong>{pinnedBadgeTopic && <span className={`leaderboard-featured-badge topic-challenge-${pinnedBadgeIndex}`} title={`הבאדג׳ הנעוץ של ${user.displayName}: ${pinnedBadgeTopic}`}><i aria-hidden="true">{TOPIC_CHALLENGE_ICONS[pinnedBadgeIndex]}</i>{pinnedBadgeTopic}</span>}{user.id === currentUser.id && <small>זה/זו אני</small>}</button></td>
                   <td className="leaderboard-points" data-label="נקודות"><strong>{user.points}</strong></td>
                   <td className="leaderboard-rank-cell" data-label="דרגה"><span className={`leaderboard-rank ${user.rank.className}`}><i aria-hidden="true">{user.rank.icon}</i>{user.rank.name}</span></td>
                 </tr>;
@@ -1862,6 +1868,7 @@ function App() {
             <div className="public-profile-avatar" aria-hidden="true"><span>{AVATARS.find(avatar => avatar.id === publicProfile?.avatarId)?.emoji || AVATARS[0].emoji}</span><i>↩</i></div>
             <div className="public-profile-title-group"><span className="section-kicker">פרופיל ציבורי</span><h2 id="public-profile-title">{publicProfileLoading ? 'טוען פרופיל…' : publicProfile?.displayName || 'פרופיל משתמש'}</h2>{publicProfile && <><small>{publicProfile.posts.length} פוסטים שפורסמו</small><div className="public-profile-meta">
               {publicProfile.rank && <span className={`user-badge public-profile-rank ${publicProfile.rank.className}`}><span className="badge-art" aria-hidden="true">{publicProfile.rank.icon}</span><span className="badge-copy"><strong>{publicProfile.rank.name}</strong><small>דרגת המגיב</small></span></span>}
+              {getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId) && <span className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).index}`} title={`באדג׳ האתגר הנעוץ: ${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).topic}`}><span className={`identity-user-mark challenge-mark-${getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).index}`} aria-hidden="true">{getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).icon}</span><span className="badge-copy"><strong>{getTopicChallengeBadge(publicProfile.featuredChallengeBadgeId).topic}</strong><small>באדג׳ אתגר</small></span></span>}
               {publicProfile.joinedAt && <span className="public-profile-tenure">מגיב באתר מתאריך {new Date(publicProfile.joinedAt).toLocaleDateString('he-IL')}</span>}
             </div></>}</div>
             <button className="profile-modal-close" type="button" aria-label="סגירת הפרופיל" onClick={() => setIsPublicProfileOpen(false)}>×</button>

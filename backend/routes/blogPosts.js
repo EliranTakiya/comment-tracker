@@ -114,7 +114,7 @@ router.get('/', async (req, res) => {
 router.get('/leaderboard', async (req, res) => {
   try {
     const [users, conversationTotals, blogTotals, reactionTotals, taskRewardTotals] = await Promise.all([
-      User.find().select('_id displayName avatarId').lean(),
+      User.find().select('_id displayName avatarId selectedChallengeBadgeId earnedChallengeBadges').lean(),
       Conversation.aggregate([
         { $group: { _id: '$userId', count: { $sum: 1 }, likesCount: { $sum: '$likesCount' }, dislikesCount: { $sum: '$dislikesCount' } } },
       ]),
@@ -171,10 +171,12 @@ router.get('/leaderboard', async (req, res) => {
       );
       const points = basePoints + (taskRewards.totalPoints || 0);
       const badgeIndex = badgeThresholds.reduce((result, threshold, index) => points >= threshold ? index : result, 0);
+      const hasEarnedFeaturedBadge = (user.earnedChallengeBadges || []).some(badge => badge.badgeId === user.selectedChallengeBadgeId);
       return {
         id,
         displayName: user.displayName,
         avatarId: user.avatarId || 'comment-bubble',
+        featuredChallengeBadgeId: hasEarnedFeaturedBadge ? user.selectedChallengeBadgeId : null,
         points,
         rank: badges[badgeIndex],
       };
@@ -189,7 +191,7 @@ router.get('/leaderboard', async (req, res) => {
 router.get('/authors/:id', async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Author not found' });
-    const user = await User.findById(req.params.id).select('displayName avatarId createdAt').lean();
+    const user = await User.findById(req.params.id).select('displayName avatarId createdAt selectedChallengeBadgeId earnedChallengeBadges').lean();
     if (!user) return res.status(404).json({ message: 'Author not found' });
     const [posts, conversationTotals, taskRewardTotals] = await Promise.all([
       BlogPost.find({ ownerId: user._id })
@@ -231,12 +233,14 @@ router.get('/authors/:id', async (req, res) => {
       { name: 'טוקבקיסט על', icon: '✹', className: 'super' },
     ];
     const badgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
+    const hasEarnedFeaturedBadge = (user.earnedChallengeBadges || []).some(badge => badge.badgeId === user.selectedChallengeBadgeId);
     res.json({
       id: user._id.toString(),
       displayName: user.displayName,
       avatarId: user.avatarId || 'comment-bubble',
       joinedAt: user.createdAt,
       rank: badges[badgeIndex],
+      featuredChallengeBadgeId: hasEarnedFeaturedBadge ? user.selectedChallengeBadgeId : null,
       posts: postsWithReactions,
     });
   } catch (err) {
