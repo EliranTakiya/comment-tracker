@@ -6,6 +6,8 @@ axios.defaults.withCredentials = true;
 const API_BASE_URL = '';
 
 const TOPICS = ['חדשות כללי', 'ספורט', 'כלכלה', 'פוליטיקה', 'אופנה', 'סלבס'];
+const TOPIC_CHALLENGE_BADGE_IDS = ['news-general', 'sports', 'economy', 'politics', 'fashion', 'celebrities'];
+const TOPIC_CHALLENGE_ICONS = ['◉', '⬟', '⌁', '✥', '❖', '◌'];
 const DATE_FILTERS = [
   { value: 'all', label: 'כל התאריכים' },
   { value: 'today', label: 'היום' },
@@ -15,18 +17,25 @@ const DATE_FILTERS = [
 ];
 const emptyForm = { siteName: '', siteUrl: '', pageTitle: '', commentId: '', yourComment: '', hint: 'חדשות כללי' };
 const themes = [
-  { value: 'day', label: 'יום בהיר', swatch: '#f7f8f5' },
-  { value: 'midday', label: 'צהריים רך', swatch: '#f5efe2' },
-  { value: 'night', label: 'לילה כהה', swatch: '#17212b' },
-  { value: 'glow', label: 'רקע זוהר', swatch: '#d8f3e5' },
+  { value: 'day', label: 'שנהב חמים', swatch: 'linear-gradient(135deg, #f3e8d7, #fbf2e6)' },
+  { value: 'midday', label: 'אפרסק בהיר', swatch: 'linear-gradient(135deg, #f7ded0, #fff0e5)' },
+  { value: 'night', label: 'דמדומים', swatch: 'linear-gradient(135deg, #36364c, #5b536e)' },
+  { value: 'glow', label: 'ורד רך', swatch: 'linear-gradient(135deg, #f4dce2, #fbeef0)' },
 ];
-const BADGES = [
-  { name: 'מתחיל', min: 0, icon: '○', className: 'beginner' },
-  { name: 'מגיב פעיל', min: 20, icon: '✦', className: 'active' },
-  { name: 'טוקבקיסט', min: 60, icon: '◆', className: 'commenter' },
-  { name: 'טוקבקיסט ותיק', min: 150, icon: '★', className: 'veteran' },
-  { name: 'טוקבקיסט על', min: 300, icon: '✹', className: 'super' },
+const IDENTITY_DIRECTIONS = [
+  { id: 'crest-of-the-voice', name: 'חותם הקול', icon: '✦', description: 'החותם האישי שלך' },
+  { id: 'the-axis', name: 'הציר', icon: '◇', description: 'נבנה מתגובות ששמרת', unlock: stats => stats.comments >= 20 },
+  { id: 'the-bloom', name: 'הפריחה', icon: '✿', description: 'נבנית מרעיונות שפיתחת', unlock: stats => stats.ideas >= 3 && stats.ideaEntries >= 5 },
+  { id: 'the-mark', name: 'החותם', icon: '⌑', description: 'נבנה ממילים שפרסמת', unlock: stats => stats.posts >= 5 },
+  { id: 'the-crown', name: 'הכתר', icon: '♛', description: 'נבנה משיחות ותגובות שקיבלת', unlock: stats => stats.engagements >= 30 },
+  { id: 'the-orbit', name: 'המסלול', icon: '◎', description: 'נבנה מפעילות בשלושה נושאים', unlock: stats => stats.activeTopics >= 3 },
+  { id: 'the-prism', name: 'המנסרה', icon: '⬡', description: 'נבנית מפעילות בכל ששת הנושאים', unlock: stats => stats.activeTopics >= 6 },
+  { id: 'the-seal', name: 'חותם הדרך', icon: '◈', description: 'נבנה מהשלמת אתגרים', unlock: stats => stats.completedMissions >= 10 },
+  { id: 'the-thread', name: 'החוט', icon: '⌘', description: 'נבנה מחיבור פריטים לרעיונות', unlock: stats => stats.ideaEntries >= 10 },
+  { id: 'the-sigil', name: 'הסימן', icon: '✺', description: 'נבנה משבעה ימי פעילות רצופים', unlock: stats => stats.activityStreak >= 7 },
 ];
+const CREST_UNLOCK_POINTS = 20;
+const TOPIC_CHALLENGE_GOAL = 5;
 
 const getLocalDateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const normalizeSiteName = (siteName) => String(siteName || '').trim().toLocaleLowerCase();
@@ -113,7 +122,7 @@ function App() {
   const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
-  const dashboardSectionIds = ['statistics', 'tasks', 'ideas', 'recommendations', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
+  const dashboardSectionIds = ['progress', 'statistics', 'tasks', 'ideas', 'recommendations', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
   const [dashboardOrder, setDashboardOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
@@ -135,6 +144,8 @@ function App() {
   const [theme, setTheme] = useState('day');
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarSaveStatus, setAvatarSaveStatus] = useState('');
+  const [identitySaving, setIdentitySaving] = useState(false);
+  const [featuredBadgeSaving, setFeaturedBadgeSaving] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -315,13 +326,33 @@ function App() {
 
   const changeTheme = async (nextTheme) => {
     setShowThemeMenu(false);
+    const previousTheme = theme;
+    setTheme(nextTheme);
     try {
       const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, { theme: nextTheme });
       setCurrentUser(response.data.user);
       showSuccess('ערכת הנושא נשמרה');
     } catch (err) {
       console.error('Save theme error:', err.response?.data || err.message);
-      alert('שמירת ערכת הנושא נכשלה.');
+      setTheme(previousTheme);
+      showSuccess('שמירת ערכת הנושא נכשלה');
+    }
+  };
+
+  const changeFeaturedBadge = async (badgeId) => {
+    if (featuredBadgeSaving) return;
+    setFeaturedBadgeSaving(true);
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, {
+        selectedChallengeBadgeId: badgeId || null,
+      });
+      setCurrentUser(response.data.user);
+      showSuccess(badgeId ? 'הבאדג׳ נבחר לצד הכינוי' : 'הבאדג׳ הוסר מהכינוי');
+    } catch (err) {
+      console.error('Save featured badge error:', err.response?.data || err.message);
+      showSuccess(err.response?.data?.message || 'לא הצלחנו לשמור את הבאדג׳');
+    } finally {
+      setFeaturedBadgeSaving(false);
     }
   };
 
@@ -338,6 +369,23 @@ function App() {
       setAvatarSaveStatus('לא הצלחנו לשמור. נסו שוב.');
     } finally {
       setAvatarSaving(false);
+    }
+  };
+
+  const changeIdentityDirection = async (directionId) => {
+    if (identitySaving) return;
+    setIdentitySaving(true);
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, {
+        selectedIdentityDirection: directionId,
+      });
+      setCurrentUser(response.data.user);
+      showSuccess('חותם הזהות עודכן');
+    } catch (err) {
+      console.error('Save identity direction error:', err.response?.data || err.message);
+      showSuccess('לא הצלחנו לשמור את בחירת החותם');
+    } finally {
+      setIdentitySaving(false);
     }
   };
 
@@ -1059,15 +1107,7 @@ function App() {
     + pointsFromBlogPosts + pointsFromBlogComments + pointsFromBlogLikes + pointsFromBlogDislikes;
   const taskRewardPoints = taskRewards.totalPoints || 0;
   const totalPoints = Math.max(0, rawPoints) + taskRewardPoints;
-  const badgeThresholds = [0, 20, 60, 150, 300];
-  const currentBadgeIndex = badgeThresholds.reduce((result, threshold, index) => totalPoints >= threshold ? index : result, 0);
-  const currentBadge = BADGES[currentBadgeIndex];
   const currentAvatar = AVATARS.find(avatar => avatar.id === currentUser?.avatarId) || AVATARS[0];
-  const nextBadge = BADGES[currentBadgeIndex + 1] ? { ...BADGES[currentBadgeIndex + 1], min: badgeThresholds[currentBadgeIndex + 1] } : null;
-  const currentBadgeMin = badgeThresholds[currentBadgeIndex];
-  const badgeProgress = nextBadge
-    ? Math.round(((totalPoints - currentBadgeMin) / (nextBadge.min - currentBadgeMin)) * 100)
-    : 100;
   const statisticsConvos = statisticsTopicFilter === 'all'
     ? convos
     : convos.filter(conversation => (conversation.hint || TOPICS[0]) === statisticsTopicFilter);
@@ -1101,6 +1141,69 @@ function App() {
   if (!activityDates.has(todayKey)) streakAnchor.setDate(streakAnchor.getDate() - 1);
   let activityStreak = 0;
   for (let day = new Date(streakAnchor); activityDates.has(getLocalDateKey(day)); day.setDate(day.getDate() - 1)) activityStreak += 1;
+  const ideaEntriesCount = ideas.reduce((total, idea) => total + idea.entries.length, 0);
+  const identityProgressPoints = totalPoints + ideas.length * 5 + ideaEntriesCount * 2;
+  const identityProgress = Math.min(100, Math.round((identityProgressPoints / CREST_UNLOCK_POINTS) * 100));
+  const crestEarned = identityProgressPoints >= CREST_UNLOCK_POINTS;
+  const activeTopicCount = new Set(convos.map(conversation => conversation.hint || TOPICS[0])).size;
+  const allConversationReplies = convos.reduce((total, conversation) => total + (conversation.repliesCount || 0), 0);
+  const identityStats = {
+    comments: convos.length,
+    ideas: ideas.length,
+    ideaEntries: ideaEntriesCount,
+    posts: myBlogPosts.length,
+    engagements: totalCommentLikes + allConversationReplies + totalBlogLikes + blogCommentsCount,
+    activeTopics: activeTopicCount,
+    completedMissions: taskRewards.claims.length,
+    activityStreak,
+  };
+  const earnedIdentityDirections = crestEarned
+    ? IDENTITY_DIRECTIONS.filter(direction => direction.id === 'crest-of-the-voice' || direction.unlock?.(identityStats))
+    : [];
+  const earnedIdentityDirectionIds = earnedIdentityDirections.map(direction => direction.id);
+  const earnedIdentityDirectionKey = earnedIdentityDirectionIds.join('|');
+  const currentUserId = currentUser?.id;
+  const storedIdentityDirectionIds = currentUser?.unlockedIdentityDirections || [];
+  const availableIdentityDirectionIds = [...new Set([...storedIdentityDirectionIds, ...earnedIdentityDirectionIds])];
+  const selectedIdentityDirection = IDENTITY_DIRECTIONS.find(direction => direction.id === currentUser?.selectedIdentityDirection)
+    || IDENTITY_DIRECTIONS[0];
+  const visibleIdentityDirection = earnedIdentityDirectionIds.includes(selectedIdentityDirection.id)
+    || (crestEarned && storedIdentityDirectionIds.includes(selectedIdentityDirection.id))
+    ? selectedIdentityDirection
+    : IDENTITY_DIRECTIONS[0];
+  const topicIdeaCounts = Object.fromEntries(TOPICS.map(topic => [topic, 0]));
+  ideas.forEach(idea => idea.entries.forEach(entry => {
+    const relatedConversationIds = entry.kind === 'conversation'
+      ? [String(entry.targetId)]
+      : (myBlogPosts.find(post => String(post._id) === String(entry.targetId))?.sourceConversationIds || []).map(String);
+    const relatedTopics = new Set(convos
+      .filter(conversation => relatedConversationIds.includes(String(conversation._id)))
+      .map(conversation => conversation.hint || TOPICS[0]));
+    relatedTopics.forEach(topic => { topicIdeaCounts[topic] = (topicIdeaCounts[topic] || 0) + 1; });
+  }));
+  const topicChallenges = TOPICS.map(topic => {
+    const count = topicIdeaCounts[topic] || 0;
+    const badgeId = TOPIC_CHALLENGE_BADGE_IDS[TOPICS.indexOf(topic)];
+    const earnedAt = currentUser?.earnedChallengeBadges?.find(badge => badge.badgeId === badgeId)?.earnedAt || null;
+    return { topic, badgeId, earnedAt, count, progress: Math.min(100, Math.round((count / TOPIC_CHALLENGE_GOAL) * 100)), earned: Boolean(earnedAt) || count >= TOPIC_CHALLENGE_GOAL };
+  });
+  const earnedTopicChallenges = topicChallenges.filter(challenge => challenge.earnedAt);
+  const featuredChallengeBadge = earnedTopicChallenges.find(challenge => challenge.badgeId === currentUser?.selectedChallengeBadgeId) || null;
+  const earnedTopicBadgeCount = topicChallenges.filter(challenge => challenge.earnedAt).length;
+  const topicChallengeUnlockKey = topicChallenges.filter(challenge => challenge.count >= TOPIC_CHALLENGE_GOAL).map(challenge => challenge.badgeId).join('|');
+  const topicMix = TOPICS.map(topic => ({
+    topic,
+    count: convos.filter(conversation => (conversation.hint || TOPICS[0]) === topic).length + (topicIdeaCounts[topic] || 0) * 2,
+  }))
+    .filter(item => item.count > 0);
+  const topicMixTotal = topicMix.reduce((total, item) => total + item.count, 0) || 1;
+  const topicMixGradient = topicMix.length
+    ? `conic-gradient(${topicMix.map((item, index) => {
+      const start = topicMix.slice(0, index).reduce((total, previous) => total + previous.count, 0) / topicMixTotal * 100;
+      const end = start + item.count / topicMixTotal * 100;
+      return `${['#c28a55', '#8390a0', '#aa7654', '#a9a08a', '#7e6c68', '#d0b78e'][TOPICS.indexOf(item.topic)]} ${start}% ${end}%`;
+    }).join(', ')})`
+    : 'conic-gradient(#4268d8 0% 30%, #934f9c 30% 53%, #ed7865 53% 76%, #d5a34e 76% 100%)';
   const missionItems = [
     { id: 'daily', icon: '◷', title: 'שמרו 3 תגובות היום', value: todaySavedComments, goal: 3, rewardPoints: 5, caption: `${todaySavedComments} מתוך 3` },
     { id: 'monthly', icon: '▦', title: 'שמרו 20 תגובות החודש', value: monthSavedComments, goal: 20, rewardPoints: 20, caption: `${monthSavedComments} מתוך 20 החודש` },
@@ -1108,6 +1211,14 @@ function App() {
     { id: 'milestone', icon: '◇', title: 'הגיעו ל־50 תגובות שמורות', value: convos.length, goal: 50, rewardPoints: 50, caption: `${convos.length} מתוך 50 תגובות` },
   ];
   const taskTitleById = Object.fromEntries(missionItems.map(mission => [mission.id, mission.title]));
+  useEffect(() => {
+    if (!currentUserId) return undefined;
+    let active = true;
+    axios.get(`${API_BASE_URL}/api/auth/me`)
+      .then(response => { if (active) setCurrentUser(response.data.user); })
+      .catch(err => console.error('Sync earned achievements error:', err.response?.data || err.message));
+    return () => { active = false; };
+  }, [currentUserId, earnedIdentityDirectionKey, topicChallengeUnlockKey]);
   useEffect(() => {
     if (!currentUser || !taskRewardsReady) return;
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1258,13 +1369,13 @@ function App() {
             </button>)}
           </div>}
         </div>
-        <div>
+        <div className="hero-copy">
           <p className="eyebrow">COMMENT TRACKER</p>
           <h1>התגובות שלך, במקום אחד</h1>
           <p className="hero-subtitle">שומרים, מסננים וחוזרים בקלות לכל תגובה חשובה.</p>
           <div className="hero-count-compact"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
         </div>
-        <div className="nickname-area">
+        <div className="nickname-area hero-profile">
           {isEditingNickname ? (
             <div className="nickname-editor">
               <input autoFocus maxLength="80" value={nicknameDraft} onChange={event => setNicknameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') saveNickname(); if (event.key === 'Escape') { setNicknameDraft(nickname); setIsEditingNickname(false); } }} placeholder="הקלידו כינוי" aria-label="כינוי" />
@@ -1276,13 +1387,41 @@ function App() {
               {nickname || 'צור כינוי'}
             </button>
           )}
-          <div className={`user-badge ${currentBadge.className}`} title={`ניקוד ההתקדמות שלי: ${totalPoints}`}>
-            <span className="badge-art" aria-hidden="true">{currentBadge.icon}</span>
-            <span className="badge-copy"><strong>{currentBadge.name}</strong><small>{totalPoints} נקודות</small></span>
-          </div>
+          {featuredChallengeBadge ? <div className={`user-badge identity-user-badge featured-topic-badge topic-challenge-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} title={`באדג׳ האתגר שלי: ${featuredChallengeBadge.topic}`}>
+            <span className={`identity-user-mark challenge-mark-${TOPICS.indexOf(featuredChallengeBadge.topic)}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[TOPICS.indexOf(featuredChallengeBadge.topic)]}</span>
+            <span className="badge-copy"><strong>{featuredChallengeBadge.topic}</strong><small>באדג׳ אתגר</small></span>
+          </div> : crestEarned && <div className="user-badge identity-user-badge" title={`חותם הזהות שלי: ${visibleIdentityDirection.name}`}>
+            <span className="identity-user-mark" aria-hidden="true" style={{ '--topic-mix': topicMixGradient }}>{visibleIdentityDirection.icon}</span>
+            <span className="badge-copy"><strong>{visibleIdentityDirection.name}</strong><small>החותם האישי שלך</small></span>
+          </div>}
         </div>
         <div className="hero-count"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
       </header>
+
+      <section className={`crest-evolution ${crestEarned ? 'is-earned' : 'is-hidden'}`} id="identity" aria-labelledby="identity-title" style={{ '--topic-mix': topicMixGradient, '--crest-progress': `${identityProgress}%` }}>
+        <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
+        <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'הפרס שלך נחשף' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? 'החותם האישי שלך מורכב מהנושאים, הרעיונות והדרך שיצרת.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לחותם שכבה משלך.'}</p>
+          <div className="crest-progress-heading"><span>{crestEarned ? 'החותם נפתח' : 'התקדמות לחשיפה'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לפתיחת החותם האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
+          <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
+        </div>
+      </section>
+      <section className="topic-challenges topic-challenges-home" aria-labelledby="topic-challenges-title">
+        <div className="identity-branches-heading"><div><span className="section-kicker">CHALLENGES</span><h2 id="topic-challenges-title">אתגרי נושאים</h2></div><span>באדג׳ נפרד לכל נושא</span></div>
+        <div className="topic-challenge-grid">{topicChallenges.map((challenge, index) => <article className={`topic-challenge topic-challenge-${index} ${challenge.earned ? 'is-earned' : ''}`} key={challenge.topic}>
+          <div className="topic-challenge-heading"><span className={`topic-challenge-mark challenge-mark-${index}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[index]}</span><div><strong>{challenge.topic}</strong><small>{challenge.earned ? 'הבאדג׳ נחשף' : 'אתגר רעיונות בנושא'}</small></div><b>{challenge.count}/{TOPIC_CHALLENGE_GOAL}</b></div>
+          <div className="mission-track" role="progressbar" aria-label={`התקדמות באתגר ${challenge.topic}`} aria-valuenow={challenge.progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${challenge.progress}%` }} /></div>
+          <div className="topic-challenge-footer"><span>{challenge.count} רעיונות מקושרים לנושא</span><strong>{challenge.earned ? 'הושלם' : `עוד ${TOPIC_CHALLENGE_GOAL - challenge.count} לחשיפה`}</strong></div>
+        </article>)}</div>
+      </section>
+      <section className="achievement-wall" aria-labelledby="achievement-wall-title">
+        <div className="achievement-wall-heading"><div><span className="section-kicker">ההישגים שלך</span><h2 id="achievement-wall-title">קיר הבאדג׳ים</h2></div><span>{earnedTopicBadgeCount} / {TOPICS.length} נפתחו</span></div>
+        <div className="achievement-badge-grid">{topicChallenges.map((challenge, index) => <article key={challenge.badgeId} className={`achievement-badge ${challenge.earnedAt ? 'is-earned' : 'is-hidden'}`}>
+          <span className={`achievement-badge-art challenge-mark-${index}`} aria-hidden="true">{challenge.earnedAt ? TOPIC_CHALLENGE_ICONS[index] : '·'}</span>
+          <strong>{challenge.earnedAt ? `אתגר ${challenge.topic}` : 'באדג׳ חבוי'}</strong>
+          <small>{challenge.earnedAt ? `נפתח ${new Date(challenge.earnedAt).toLocaleDateString('he-IL')}` : `נושא ${challenge.topic}`}</small>
+          <span className="achievement-badge-state">{challenge.earnedAt ? 'הושג' : 'עוד לא נפתח'}</span>
+        </article>)}</div>
+      </section>
 
       <nav className="main-nav" aria-label="ניווט ראשי">
         <button className="mobile-nav-toggle" type="button" aria-expanded={isMobileNavOpen} aria-controls="main-nav-links" onClick={() => setIsMobileNavOpen(open => !open)}>
@@ -1414,10 +1553,18 @@ function App() {
 
       <div className={`dashboard-panel ${collapsedDashboardSections.progress ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('progress') }}>
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
-        <div className="statistics-heading"><div><span className="section-kicker">הדרך שלך</span><h2 id="progress-title">ההתקדמות שלי</h2></div><span className={`user-badge ${currentBadge.className}`}><span className="badge-art" aria-hidden="true">{currentBadge.icon}</span><span className="badge-copy"><strong>{currentBadge.name}</strong><small>הדרגה הנוכחית</small></span></span>{sectionControls('progress', 'ההתקדמות שלי')}</div>
-        <div className="progress-summary"><strong>{totalPoints}</strong><span>נקודות זכות</span></div>
-        {nextBadge ? <><p className="next-badge-copy">עוד {nextBadge.min - totalPoints} נקודות לדרגת {nextBadge.name}</p><div className="progress-track" role="progressbar" aria-label="התקדמות לדרגה הבאה" aria-valuenow={badgeProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${badgeProgress}%` }} /></div><div className="progress-track-caption"><span>{badgeProgress}% מהדרך</span><span>{totalPoints} / {nextBadge.min} נקודות</span></div></> : <p className="next-badge-copy">הגעת לדרגה הגבוהה ביותר — כל הכבוד!</p>}
-        <div className="badge-milestones">{BADGES.map((badge, index) => <div key={badge.className} className={`badge-milestone ${totalPoints >= badgeThresholds[index] ? 'earned' : ''} ${index === currentBadgeIndex ? 'current' : ''}`}><span className="badge-milestone-icon">{badge.icon}</span><strong>{badge.name}</strong><small>{badgeThresholds[index]} נקודות</small><span className="badge-milestone-state">{index === currentBadgeIndex ? 'הדרגה שלך' : totalPoints >= badgeThresholds[index] ? 'הושגה' : 'בדרך'}</span></div>)}</div>
+        <div className="statistics-heading"><div><span className="section-kicker">הישגים משניים</span><h2 id="progress-title">ענפי זהות ואתגרי נושאים</h2></div>{sectionControls('progress', 'ענפי זהות ואתגרי נושאים')}</div>
+        {crestEarned && <div className="identity-branches" aria-labelledby="identity-branches-title">
+          <div className="identity-branches-heading"><div><span className="section-kicker">ענפי זהות</span><h3 id="identity-branches-title">כיוונים שנפתחים מתוך הדרך שלך</h3></div><span>{availableIdentityDirectionIds.length} / {IDENTITY_DIRECTIONS.length}</span></div>
+          <div className="identity-direction-grid">{IDENTITY_DIRECTIONS.map((direction, index) => {
+            const earned = earnedIdentityDirectionIds.includes(direction.id) || storedIdentityDirectionIds.includes(direction.id);
+            const selected = visibleIdentityDirection.id === direction.id;
+            return <button type="button" key={direction.id} className={`identity-direction ${earned ? 'is-earned' : 'is-locked'} ${selected ? 'is-selected' : ''}`} aria-pressed={selected} disabled={!earned || identitySaving} onClick={() => changeIdentityDirection(direction.id)}>
+              <span className={`identity-direction-mark identity-mark-${index}`} aria-hidden="true">{earned ? direction.icon : '·'}</span><strong>{earned ? direction.name : 'ענף חבוי'}</strong><small>{direction.description}</small><span className="identity-direction-state">{selected ? 'החותם שלך' : earned ? 'נפתח' : 'נבנה לאורך הדרך'}</span>
+            </button>;
+          })}</div>
+        </div>}
+        <div className="progress-summary"><strong>{totalPoints}</strong><span>נקודות פעילות</span></div>
       </section>
 
       <section className="progress-details" aria-label="פירוט נקודות ופעילות הבלוג">
@@ -1540,6 +1687,13 @@ function App() {
               </div>
               {avatarSaveStatus && <small className={`avatar-save-status ${avatarSaving ? 'is-saving' : ''}`} role="status">{avatarSaveStatus}</small>}
             </div>
+            <label className="settings-field featured-badge-select">הבאדג׳ שיופיע לצד הכינוי
+              <select value={featuredChallengeBadge?.badgeId || ''} disabled={featuredBadgeSaving || !earnedTopicChallenges.length} onChange={event => changeFeaturedBadge(event.target.value)}>
+                <option value="">{earnedTopicChallenges.length ? 'החותם האישי שלי' : 'באדג׳ים יופיעו אחרי זכייה באתגר'}</option>
+                {earnedTopicChallenges.map(challenge => <option key={challenge.badgeId} value={challenge.badgeId}>{challenge.topic}</option>)}
+              </select>
+              <small>{featuredBadgeSaving ? 'שומר בחירה…' : earnedTopicChallenges.length ? 'אפשר להחליף בכל עת בין הבאדג׳ים שהרווחת.' : 'השלם אתגר נושא כדי לבחור באדג׳ להצגה.'}</small>
+            </label>
           </article>
           <article className="settings-card">
             <div className="settings-card-heading"><span aria-hidden="true">◐</span><div><h3>מראה האתר</h3><p>בחר/י את ערכת הנושא שלך</p></div></div>

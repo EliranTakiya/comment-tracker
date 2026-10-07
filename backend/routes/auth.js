@@ -7,6 +7,8 @@ const AccountSetup = require('../models/AccountSetup');
 const Conversation = require('../models/Conversation');
 const BlogPost = require('../models/BlogPost');
 const ProfileStats = require('../models/ProfileStats');
+const Idea = require('../models/Idea');
+const TaskReward = require('../models/TaskReward');
 const { requireAuth, hashToken, setSessionCookie, clearSessionCookie, readCookie, SESSION_COOKIE } = require('../middleware/auth');
 
 const router = express.Router();
@@ -55,8 +57,95 @@ async function verifyPassword(password, storedHash) {
   }
 }
 
+const IDENTITY_DIRECTIONS = ['crest-of-the-voice', 'the-axis', 'the-bloom', 'the-mark', 'the-crown', 'the-orbit', 'the-prism', 'the-seal', 'the-thread', 'the-sigil'];
+const CHALLENGE_TOPICS = [
+  { id: 'news-general', label: 'חדשות כללי' },
+  { id: 'sports', label: 'ספורט' },
+  { id: 'economy', label: 'כלכלה' },
+  { id: 'politics', label: 'פוליטיקה' },
+  { id: 'fashion', label: 'אופנה' },
+  { id: 'celebrities', label: 'סלבס' },
+];
+
 function publicUser(user) {
-  return { id: user._id.toString(), email: user.email, displayName: user.displayName, avatarId: user.avatarId || 'comment-bubble', theme: user.theme };
+  const unlockedIdentityDirections = [...new Set(['crest-of-the-voice', ...(user.unlockedIdentityDirections || []).filter(id => IDENTITY_DIRECTIONS.includes(id))])];
+  const selectedIdentityDirection = unlockedIdentityDirections.includes(user.selectedIdentityDirection) ? user.selectedIdentityDirection : 'crest-of-the-voice';
+  const earnedChallengeBadges = (user.earnedChallengeBadges || []).map(badge => ({ badgeId: badge.badgeId, earnedAt: badge.earnedAt }));
+  const earnedChallengeBadgeIds = new Set(earnedChallengeBadges.map(badge => badge.badgeId));
+  const selectedChallengeBadgeId = earnedChallengeBadgeIds.has(user.selectedChallengeBadgeId) ? user.selectedChallengeBadgeId : null;
+  return { id: user._id.toString(), email: user.email, displayName: user.displayName, avatarId: user.avatarId || 'comment-bubble', theme: user.theme, selectedIdentityDirection, unlockedIdentityDirections, earnedChallengeBadges, selectedChallengeBadgeId };
+}
+
+async function syncIdentityProgress(user) {
+  const [conversations, ideas, posts, rewards] = await Promise.all([
+    Conversation.find({ userId: user._id }).select('hint likesCount dislikesCount repliesCount createdAt').lean(),
+    Idea.find({ userId: user._id }).select('entries').lean(),
+    BlogPost.find({ ownerId: user._id }).select('likesCount dislikesCount comments sourceConversationIds').lean(),
+    TaskReward.find({ userId: user._id }).select('points').lean(),
+  ]);
+  const ideaEntries = ideas.reduce((total, idea) => total + (idea.entries?.length || 0), 0);
+  const commentLikes = conversations.reduce((total, item) => total + (item.likesCount || 0), 0);
+  const commentDislikes = conversations.reduce((total, item) => total + (item.dislikesCount || 0), 0);
+  const blogComments = posts.reduce((total, post) => total + (post.comments?.length || 0), 0);
+  const blogLikes = posts.reduce((total, post) => total + (post.likesCount || 0), 0);
+  const blogDislikes = posts.reduce((total, post) => total + (post.dislikesCount || 0), 0);
+  const taskPoints = rewards.reduce((total, reward) => total + (reward.points || 0), 0);
+  const rawPoints = conversations.length + commentLikes * 2 - commentDislikes * 2
+    + posts.length * 5 + blogComments * 2 + blogLikes * 2 - blogDislikes * 2;
+  const identityPoints = Math.max(0, rawPoints) + taskPoints + ideas.length * 5 + ideaEntries * 2;
+  const activeTopics = new Set(conversations.map(item => item.hint || 'חדשות כללי')).size;
+  const conversationTopics = new Map(conversations.map(item => [String(item._id), item.hint || 'חדשות כללי']));
+  const postById = new Map(posts.map(post => [String(post._id), post]));
+  const topicIdeaCounts = Object.fromEntries(CHALLENGE_TOPICS.map(topic => [topic.label, 0]));
+  ideas.forEach(idea => (idea.entries || []).forEach(entry => {
+    const linkedConversationIds = entry.kind === 'conversation'
+      ? [String(entry.targetId)]
+      : (postById.get(String(entry.targetId))?.sourceConversationIds || []).map(String);
+    const linkedTopics = new Set(linkedConversationIds.map(id => conversationTopics.get(id)).filter(topic => topic in topicIdeaCounts));
+    linkedTopics.forEach(topic => { topicIdeaCounts[topic] += 1; });
+  }));
+  const engagements = commentLikes + conversations.reduce((total, item) => total + (item.repliesCount || 0), 0)
+    + blogLikes + blogComments;
+  const activityDays = new Set(conversations.map(item => new Date(item.createdAt).toISOString().slice(0, 10)));
+  const today = new Date();
+  let activityAnchor = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  if (!activityDays.has(activityAnchor.toISOString().slice(0, 10))) activityAnchor.setUTCDate(activityAnchor.getUTCDate() - 1);
+  let activityStreak = 0;
+  for (let day = new Date(activityAnchor); activityDays.has(day.toISOString().slice(0, 10)); day.setUTCDate(day.getUTCDate() - 1)) activityStreak += 1;
+
+  const crestEarned = identityPoints >= 20;
+  const earnedDirections = crestEarned ? [
+    conversations.length >= 20 && 'the-axis',
+    ideas.length >= 3 && ideaEntries >= 5 && 'the-bloom',
+    posts.length >= 5 && 'the-mark',
+    engagements >= 30 && 'the-crown',
+    activeTopics >= 3 && 'the-orbit',
+    activeTopics >= 6 && 'the-prism',
+    rewards.length >= 10 && 'the-seal',
+    ideaEntries >= 10 && 'the-thread',
+    activityStreak >= 7 && 'the-sigil',
+  ].filter(Boolean) : [];
+  const storedDirections = (user.unlockedIdentityDirections || []).filter(id => IDENTITY_DIRECTIONS.includes(id));
+  const unlockedDirections = [...new Set(['crest-of-the-voice', ...storedDirections, ...earnedDirections])];
+  const earnedChallengeBadges = [...(user.earnedChallengeBadges || [])];
+  const knownChallengeBadges = new Set(earnedChallengeBadges.map(badge => badge.badgeId));
+  CHALLENGE_TOPICS.forEach(topic => {
+    if (topicIdeaCounts[topic.label] >= 5 && !knownChallengeBadges.has(topic.id)) {
+      earnedChallengeBadges.push({ badgeId: topic.id, earnedAt: new Date() });
+    }
+  });
+  const selectedDirection = unlockedDirections.includes(user.selectedIdentityDirection)
+    ? user.selectedIdentityDirection
+    : 'crest-of-the-voice';
+  if (JSON.stringify(storedDirections) !== JSON.stringify(unlockedDirections)
+    || earnedChallengeBadges.length !== (user.earnedChallengeBadges || []).length
+    || user.selectedIdentityDirection !== selectedDirection) {
+    user.unlockedIdentityDirections = unlockedDirections;
+    user.selectedIdentityDirection = selectedDirection;
+    user.earnedChallengeBadges = earnedChallengeBadges;
+    await user.save();
+  }
+  return user;
 }
 
 async function createSession(user, res) {
@@ -129,6 +218,7 @@ router.post('/register', limitAuthAttempts(8, 15 * 60 * 1000), async (req, res) 
       }
       await migrateLegacyData(user);
     }
+    await syncIdentityProgress(user);
     await createSession(user, res);
     res.status(201).json({ user: publicUser(user) });
   } catch (err) {
@@ -147,6 +237,7 @@ router.post('/login', limitAuthAttempts(10, 15 * 60 * 1000), async (req, res) =>
       return res.status(401).json({ message: 'Email or password is incorrect' });
     }
     await migrateLegacyData(user);
+    await syncIdentityProgress(user);
     await createSession(user, res);
     res.json({ user: publicUser(user) });
   } catch (err) {
@@ -158,7 +249,8 @@ router.post('/login', limitAuthAttempts(10, 15 * 60 * 1000), async (req, res) =>
 router.get('/me', requireAuth, async (req, res) => {
   try {
     await migrateLegacyData(req.user);
-    res.json({ user: publicUser(req.user) });
+    const user = await syncIdentityProgress(req.user);
+    res.json({ user: publicUser(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Could not load account' });
@@ -179,6 +271,10 @@ router.post('/logout', async (req, res) => {
 
 router.put('/profile', requireAuth, async (req, res) => {
   try {
+    if (req.body.unlockedIdentityDirections !== undefined) {
+      return res.status(400).json({ message: 'Identity paths are unlocked by account activity' });
+    }
+    const identityUser = await syncIdentityProgress(req.user);
     const update = {};
     if (req.body.displayName !== undefined) {
       const displayName = String(req.body.displayName).trim();
@@ -193,6 +289,22 @@ router.put('/profile', requireAuth, async (req, res) => {
       const validAvatarIds = ['comment-bubble', 'woman-writer', 'man-writer', 'robot', 'owl', 'fox', 'cat', 'notebook'];
       if (!validAvatarIds.includes(req.body.avatarId)) return res.status(400).json({ message: 'Invalid avatar' });
       update.avatarId = req.body.avatarId;
+    }
+    if (req.body.selectedChallengeBadgeId !== undefined) {
+      const selectedChallengeBadgeId = req.body.selectedChallengeBadgeId;
+      const earnedBadgeIds = new Set((identityUser.earnedChallengeBadges || []).map(badge => badge.badgeId));
+      if (selectedChallengeBadgeId !== null && !earnedBadgeIds.has(selectedChallengeBadgeId)) {
+        return res.status(400).json({ message: 'Choose a challenge badge you have earned' });
+      }
+      update.selectedChallengeBadgeId = selectedChallengeBadgeId;
+    }
+    if (req.body.selectedIdentityDirection !== undefined) {
+      const selected = req.body.selectedIdentityDirection;
+      const unlocked = identityUser.unlockedIdentityDirections || ['crest-of-the-voice'];
+      if (!IDENTITY_DIRECTIONS.includes(selected) || !unlocked.includes(selected)) {
+        return res.status(400).json({ message: 'Choose an unlocked identity direction' });
+      }
+      update.selectedIdentityDirection = selected;
     }
     const user = await User.findByIdAndUpdate(req.user._id, { $set: update }, { new: true, runValidators: true });
     res.json({ user: publicUser(user) });
