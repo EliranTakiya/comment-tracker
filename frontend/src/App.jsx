@@ -81,6 +81,7 @@ const AVATARS = [
   { id: 'cat', label: 'חתול', emoji: '🐱' },
   { id: 'notebook', label: 'מחברת', emoji: '📝' },
 ];
+const dashboardFooter = <footer className="app-footer">© All rights reserved to Eliran Takiya</footer>;
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -1516,6 +1517,7 @@ function App() {
           <span className="achievement-badge-state">{direction.id === visibleIdentityDirection.id ? 'הסמל הפעיל' : 'נפתח'}</span>
         </article>)}</div> : <p className="achievement-wall-empty">הבאדג׳ים שהשגת יופיעו כאן.</p>}
       </section>
+      {dashboardFooter}
       </section>
 
       <div className={`dashboard-sections ${activeSection !== 'home' ? 'is-active' : ''}`}>
@@ -1533,6 +1535,7 @@ function App() {
         </div>
         <div className="statistics-sites"><h3>איפה הגבתי הכי הרבה?</h3>{siteStats.length ? siteStats.map(([site, count]) => <div className="site-stat" key={site}><span>{site}</span><div className="site-stat-track"><i style={{ width: `${Math.max(8, count / topSiteCount * 100)}%` }} /></div><strong>{count}</strong></div>) : <p>שמרו תגובה ראשונה כדי להתחיל לצבור נתונים.</p>}</div>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'tasks' ? 'is-active' : ''} ${collapsedDashboardSections.tasks ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('tasks') }}>
@@ -1560,6 +1563,7 @@ function App() {
           </li>)}</ul> : <p>הפרסים שתקבלו על השלמת משימות יופיעו כאן.</p>}
         </div>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'ideas' ? 'is-active' : ''} ${collapsedDashboardSections.ideas ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('ideas') }}>
@@ -1614,6 +1618,7 @@ function App() {
           </div>
         </div>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'recommendations' ? 'is-active' : ''} ${collapsedDashboardSections.recommendations ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('recommendations') }}>
@@ -1633,6 +1638,7 @@ function App() {
         </div>
         <p className="recommendations-note">ההמלצות מבוססות על תגובות ששמרת ועל האתרים שהיו פעילים בהם.</p>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'progress' ? 'is-active' : ''} ${collapsedDashboardSections.progress ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('progress') }}>
@@ -1702,6 +1708,7 @@ function App() {
           </div>
         </div>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'blog' ? 'is-active' : ''} ${collapsedDashboardSections.blog ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('blog') }}>
@@ -1735,6 +1742,7 @@ function App() {
         </form>
         {filteredMyBlogPosts.length ? <div className="blog-post-list">{filteredMyBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{myBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : nickname ? 'עוד לא פרסמת פוסט' : 'בחרו כינוי כדי להתחיל'}</h3><p>{myBlogPosts.length ? 'אפשר לשנות את החיפוש או את המסננים.' : 'פוסטים שתפרסם יופיעו כאן ובבלוג המגיבים, ויוסיפו 5 נקודות להתקדמות שלך.'}</p></div>}
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'community-blog' ? 'is-active' : ''} ${collapsedDashboardSections['community-blog'] ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('community-blog') }}>
@@ -1753,6 +1761,7 @@ function App() {
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
         {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לשנות את החיפוש או את המסננים.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'leaderboard' ? 'is-active' : ''} ${collapsedDashboardSections.leaderboard ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('leaderboard') }}>
@@ -1779,6 +1788,7 @@ function App() {
             : <div className="leaderboard-status">עדיין אין משתמשים בדירוג.</div>}
         <button className="leaderboard-refresh" type="button" onClick={loadGlobalLeaderboard} disabled={leaderboardLoading}>{leaderboardLoading ? 'מעדכן…' : 'רענון הדירוג'}</button>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel ${activeSection === 'settings' ? 'is-active' : ''} ${collapsedDashboardSections.settings ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('settings') }}>
@@ -1823,6 +1833,7 @@ function App() {
           </article>
         </div>
       </section>
+      {dashboardFooter}
       </div>
 
       <div className={`dashboard-panel comments-dashboard-panel ${activeSection === 'comments' ? 'is-active' : ''} ${collapsedDashboardSections.comments ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('comments') }} id="comments">
@@ -1939,6 +1950,7 @@ function App() {
           );
         })}
       </div> : <div className="empty-state"><span>◌</span><h3>{convos.length ? 'אין תוצאות לסינון' : 'עדיין אין תגובות שמורות'}</h3><p>{convos.length ? 'נסו לשנות את הנושא או טווח התאריך.' : 'התגובה הראשונה שלכם מחכה כאן.'}</p></div>}
+      {dashboardFooter}
       </div>
       </div>
 
@@ -1960,7 +1972,6 @@ function App() {
         </section>
       </div>}
       </main>
-      <footer className="app-footer">© All rights reserved to Eliran Takiya</footer>
       <nav className={`mobile-bottom-nav ${isMobileMoreOpen ? 'has-more-open' : ''}`} aria-label="ניווט מהיר">
         <div className="mobile-more-menu" id="mobile-more-menu" hidden={!isMobileMoreOpen}>
           {DASHBOARD_NAV_ITEMS.filter(item => !MOBILE_PRIMARY_NAV_IDS.includes(item.id)).sort((first, second) => dashboardOrder.indexOf(first.id) - dashboardOrder.indexOf(second.id)).map(item => <button key={item.id} type="button" className={activeSection === item.id ? 'is-active' : ''} aria-current={activeSection === item.id ? 'page' : undefined} onClick={event => navigateToSection(event, item.id)}>

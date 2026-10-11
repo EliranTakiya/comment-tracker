@@ -84,6 +84,9 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
 
   const { container } = render(<App />);
   await screen.findByRole('heading', { name: 'התגובות שלך, במקום אחד' });
+  expect(container.querySelectorAll('.home-screen > .app-footer')).toHaveLength(1);
+  const panelsWithFooters = [...container.querySelectorAll('.dashboard-panel > .app-footer')].map(footer => footer.parentElement.id || footer.parentElement.querySelector('[id]')?.id || 'unnamed');
+  expect(panelsWithFooters).toEqual(['statistics', 'tasks', 'ideas', 'recommendations', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments']);
   await waitFor(() => expect(container.querySelectorAll('.achievement-wall .achievement-badge')).toHaveLength(2));
   expect(container.querySelector('.achievement-wall')).not.toHaveTextContent('החותם');
   expect(container.querySelector('.achievement-wall-heading')).toHaveTextContent('2 / 10 נפתחו');
@@ -103,7 +106,7 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
   await waitFor(() => expect(window.location.hash).toBe('#progress'));
   expect(container.querySelectorAll('.dashboard-panel.is-active .identity-direction-grid .identity-direction')).toHaveLength(10);
   expect(container.querySelector('.dashboard-panel.is-active .identity-branches-heading')).toHaveTextContent('2/10 ענפים נפתחו');
-  expect(screen.getByText('© All rights reserved to Eliran Takiya')).toBeInTheDocument();
+  expect(container.querySelector('.dashboard-panel.is-active > .app-footer')).toHaveTextContent('© All rights reserved to Eliran Takiya');
 
   fireEvent.click(container.querySelector('.nav-ideas'));
   await waitFor(() => expect(window.location.hash).toBe('#ideas'));
