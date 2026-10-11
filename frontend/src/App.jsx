@@ -6,6 +6,20 @@ axios.defaults.withCredentials = true;
 const API_BASE_URL = '';
 
 const TOPICS = ['חדשות כללי', 'ספורט', 'כלכלה', 'פוליטיקה', 'אופנה', 'סלבס'];
+const DASHBOARD_NAV_ITEMS = [
+  { id: 'home', label: 'ראשי', className: 'nav-home', icon: '⌂' },
+  { id: 'comments', label: 'התגובות שלי', className: 'nav-comments', icon: '▤' },
+  { id: 'statistics', label: 'הסטטיסטיקות שלי', className: 'nav-statistics', icon: '◷' },
+  { id: 'tasks', label: 'המשימות שלי', className: 'nav-tasks', icon: '✓' },
+  { id: 'ideas', label: 'מסע הרעיונות', className: 'nav-ideas', icon: '◇' },
+  { id: 'recommendations', label: 'המלצות אישיות', className: 'nav-recommendations', icon: '✦' },
+  { id: 'progress', label: 'ההתקדמות שלי', className: 'nav-progress', icon: '↗' },
+  { id: 'blog', label: 'הבלוג שלי', className: 'nav-blog', icon: '✎' },
+  { id: 'community-blog', label: 'בלוג המגיבים', className: 'nav-community', icon: '◎' },
+  { id: 'leaderboard', label: 'טבלת מגיבים', className: 'nav-leaderboard', icon: '≡' },
+  { id: 'settings', label: 'הגדרות', className: 'nav-settings', icon: '⚙' },
+];
+const MOBILE_PRIMARY_NAV_IDS = ['home', 'comments', 'statistics', 'ideas'];
 const TOPIC_CHALLENGE_BADGE_IDS = ['news-general', 'sports', 'economy', 'politics', 'fashion', 'celebrities'];
 const TOPIC_CHALLENGE_ICONS = ['◉', '⬟', '⌁', '✥', '❖', '◌'];
 const getTopicChallengeBadge = badgeId => {
@@ -134,7 +148,7 @@ function App() {
   const successTimerRef = useRef(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
-  const dashboardSectionIds = ['progress', 'statistics', 'tasks', 'ideas', 'recommendations', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments'];
+  const dashboardSectionIds = DASHBOARD_NAV_ITEMS.filter(item => item.id !== 'home').map(item => item.id);
   const [dashboardOrder, setDashboardOrder] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('comment-tracker-section-order') || 'null');
@@ -160,7 +174,11 @@ function App() {
   const [featuredBadgeSaving, setFeaturedBadgeSaving] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState(() => {
+    const requestedSection = window.location.hash.slice(1);
+    return DASHBOARD_NAV_ITEMS.some(item => item.id === requestedSection) ? requestedSection : 'home';
+  });
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [nickname, setNickname] = useState('');
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [isEditingNickname, setIsEditingNickname] = useState(false);
@@ -215,13 +233,25 @@ function App() {
     if (successTimerRef.current) window.clearTimeout(successTimerRef.current);
   }, []);
 
+  const goToDashboardSection = (sectionId) => {
+    setActiveSection(sectionId);
+    setIsMobileMoreOpen(false);
+    window.history.pushState(null, '', `#${sectionId}`);
+  };
+
   const navigateToSection = (event, sectionId) => {
     event.preventDefault();
-    setIsMobileNavOpen(false);
-    window.setTimeout(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, isMobileNavOpen ? 320 : 0);
+    goToDashboardSection(sectionId);
   };
+
+  useEffect(() => {
+    const syncSectionFromHistory = () => {
+      const requestedSection = window.location.hash.slice(1);
+      setActiveSection(DASHBOARD_NAV_ITEMS.some(item => item.id === requestedSection) ? requestedSection : 'home');
+    };
+    window.addEventListener('popstate', syncSectionFromHistory);
+    return () => window.removeEventListener('popstate', syncSectionFromHistory);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -646,7 +676,8 @@ function App() {
     setBlogDraft({ title: post.title || '', content: post.content || '', sourceTitle: post.sourceTitle || '', sourceUrl: post.sourceUrl || '' });
     setBlogDraftSourceConversationIds((post.sourceConversationIds || []).map(String));
     setIsBlogFormOpen(true);
-    document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    goToDashboardSection('blog');
+    window.setTimeout(() => document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   };
 
   const deleteBlogPost = async (post) => {
@@ -770,7 +801,8 @@ function App() {
       sourceTitle: previous.sourceTitle || conversation.pageTitle || conversation.siteName || '',
       sourceUrl: previous.sourceUrl || conversation.siteUrl || '',
     }));
-    document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    goToDashboardSection('blog');
+    window.setTimeout(() => document.getElementById('blog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
     window.setTimeout(() => document.querySelector('.blog-compose textarea')?.focus(), 350);
   };
 
@@ -1401,6 +1433,17 @@ function App() {
   return (
     <div className={`app theme-${theme}`} dir="rtl">
       {successMessage && <div className="success-toast" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{successMessage}</div>}
+      <nav className={`main-nav ${isPublicProfileOpen ? 'is-profile-open' : ''}`} aria-label="ניווט ראשי">
+        <div className="main-nav-links">
+          {DASHBOARD_NAV_ITEMS.slice().sort((first, second) => (dashboardOrder.indexOf(first.id) < 0 ? -1 : dashboardOrder.indexOf(first.id)) - (dashboardOrder.indexOf(second.id) < 0 ? -1 : dashboardOrder.indexOf(second.id))).map(item => <a key={item.id} className={`${item.className} ${activeSection === item.id ? 'active' : ''}`} href={`#${item.id}`} aria-current={activeSection === item.id ? 'page' : undefined} onClick={event => navigateToSection(event, item.id)}>{item.label}</a>)}
+        </div>
+        <button className="notification-bell" type="button" disabled aria-label="התראות, יוגדרו בהמשך" title="התראות יוגדרו בהמשך">
+          <span aria-hidden="true">🔔</span><small>התראות</small>
+        </button>
+      </nav>
+      <main className="app-screens">
+      <section className={`dashboard-screen home-screen ${activeSection === 'home' ? 'is-active' : ''}`} aria-label="ראשי">
+      <div className={`home-cosmic-stage ${crestEarned ? 'is-earned' : 'is-locked'}`}>
       <header className="hero" id="home">
         <div className="theme-picker">
           <button className="brand-mark" onClick={() => setShowThemeMenu(!showThemeMenu)} aria-label="בחירת רקע" aria-expanded={showThemeMenu}>CT</button>
@@ -1448,17 +1491,6 @@ function App() {
         <div className="hero-count"><strong>{convos.length}</strong><span>תגובות שמורות</span></div>
       </header>
 
-      <nav className={`main-nav ${isMobileNavOpen ? 'is-open' : ''} ${isPublicProfileOpen ? 'is-profile-open' : ''}`} aria-label="ניווט ראשי">
-        <button className="mobile-nav-toggle" type="button" aria-expanded={isMobileNavOpen} aria-controls="main-nav-links" onClick={() => setIsMobileNavOpen(open => !open)}>
-          <span className={`hamburger-icon ${isMobileNavOpen ? 'is-open' : ''}`} aria-hidden="true"><i /><i /><i /></span>
-          <span>{isMobileNavOpen ? 'סגירת תפריט' : 'ניווט באתר'}</span>
-          <span className="nav-toggle-hint" aria-hidden="true">{isMobileNavOpen ? '×' : '⌄'}</span>
-        </button>
-        <div className={`main-nav-links ${isMobileNavOpen ? 'is-open' : ''}`} id="main-nav-links">
-          <a className="nav-home" href="#home" onClick={event => navigateToSection(event, 'home')}>ראשי</a><a className="nav-comments" href="#comments" onClick={event => navigateToSection(event, 'comments')}>התגובות שלי</a><a className="nav-statistics" href="#statistics" onClick={event => navigateToSection(event, 'statistics')}>הסטטיסטיקות שלי</a><a className="nav-tasks" href="#tasks" onClick={event => navigateToSection(event, 'tasks')}>המשימות שלי</a><a className="nav-ideas" href="#ideas" onClick={event => navigateToSection(event, 'ideas')}>מסע הרעיונות</a><a className="nav-recommendations" href="#recommendations" onClick={event => navigateToSection(event, 'recommendations')}>המלצות אישיות</a><a className="nav-progress" href="#progress" onClick={event => navigateToSection(event, 'progress')}>ההתקדמות שלי</a><a className="nav-blog" href="#blog" onClick={event => navigateToSection(event, 'blog')}>הבלוג שלי</a><a className="nav-community" href="#community-blog" onClick={event => navigateToSection(event, 'community-blog')}>בלוג המגיבים</a><a className="nav-leaderboard" href="#leaderboard" onClick={event => navigateToSection(event, 'leaderboard')}>טבלת מגיבים</a><a className="nav-settings" href="#settings" onClick={event => navigateToSection(event, 'settings')}>הגדרות</a>
-        </div>
-      </nav>
-
       <section className={`crest-evolution ${crestEarned ? 'is-earned' : 'is-hidden'}`} id="identity" aria-labelledby="identity-title" style={{ '--topic-mix': topicMixGradient, '--crest-progress': `${identityProgress}%` }}>
         <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core"><span className="crest-core-fill" style={{ height: `${identityProgress}%` }} /><span className="crest-core-symbol">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
         <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'הסמל הבסיסי שלך נפתח · הזהות ממשיכה להתפתח' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? currentUser?.identityMode === 'custom' ? 'הסמל נעוץ על הענף שבחרת. בכל עת אפשר לחזור להתפתחות אוטומטית.' : 'הסמל משתנה אוטומטית כשהפעילות שלך פותחת ענפי זהות. אפשר גם לנעוץ ענף פתוח לבחירתך.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לסמל שכבה משלך.'}</p>
@@ -1466,6 +1498,7 @@ function App() {
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
         </div>
       </section>
+      </div>
       <section className="topic-challenges topic-challenges-home" aria-labelledby="topic-challenges-title">
         <div className="identity-branches-heading"><div><span className="section-kicker">CHALLENGES</span><h2 id="topic-challenges-title">אתגרי נושאים</h2></div><span>באדג׳ נפרד לכל נושא</span></div>
         <div className="topic-challenge-grid">{topicChallenges.map((challenge, index) => <article className={`topic-challenge topic-challenge-${index} ${challenge.earned ? 'is-earned' : ''}`} key={challenge.topic}>
@@ -1476,16 +1509,17 @@ function App() {
       </section>
       <section className="achievement-wall" aria-labelledby="achievement-wall-title">
         <div className="achievement-wall-heading"><div><span className="section-kicker">ההישגים שלך</span><h2 id="achievement-wall-title">קיר הבאדג׳ים</h2></div><span>{earnedIdentityBadgeCount} / {IDENTITY_DIRECTIONS.length} נפתחו</span></div>
-        <div className="achievement-badge-grid">{identityBadgeEntries.map(({ direction, earned, progress }) => <article key={direction.id} className={`achievement-badge ${earned ? 'is-earned' : 'is-hidden'}`}>
-          <span className="achievement-badge-art" aria-hidden="true">{earned ? direction.icon : '·'}</span>
+        {earnedIdentityBadgeCount ? <div className="achievement-badge-grid">{identityBadgeEntries.filter(entry => entry.earned).map(({ direction }) => <article key={direction.id} className="achievement-badge is-earned">
+          <span className="achievement-badge-art" aria-hidden="true">{direction.icon}</span>
           <strong>{direction.name}</strong>
-          <small>{earned ? direction.description : progress?.detail || 'נפתח אחרי גילוי הסמל'}</small>
-          <span className="achievement-badge-state">{earned ? direction.id === visibleIdentityDirection.id ? 'הסמל הפעיל' : 'נפתח' : 'נעול'}</span>
-        </article>)}</div>
+          <small>{direction.description}</small>
+          <span className="achievement-badge-state">{direction.id === visibleIdentityDirection.id ? 'הסמל הפעיל' : 'נפתח'}</span>
+        </article>)}</div> : <p className="achievement-wall-empty">הבאדג׳ים שהשגת יופיעו כאן.</p>}
+      </section>
       </section>
 
-      <div className="dashboard-sections">
-      <div className={`dashboard-panel ${collapsedDashboardSections.statistics ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('statistics') }}>
+      <div className={`dashboard-sections ${activeSection !== 'home' ? 'is-active' : ''}`}>
+      <div className={`dashboard-panel ${activeSection === 'statistics' ? 'is-active' : ''} ${collapsedDashboardSections.statistics ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('statistics') }}>
       <section className="statistics-section" id="statistics" aria-labelledby="statistics-title">
         <div className="statistics-heading"><div><span className="section-kicker">המספרים שלך</span><h2 id="statistics-title">הסטטיסטיקות שלי</h2></div><span className="statistics-period">כל התקופה</span>{sectionControls('statistics', 'הסטטיסטיקות שלי')}</div>
         <label className="statistics-filter">סוג אתר<select value={statisticsTopicFilter} onChange={event => setStatisticsTopicFilter(event.target.value)} aria-label="סינון סטטיסטיקות לפי סוג אתר"><option value="all">כל סוגי האתרים</option>{TOPICS.map(topic => <option key={topic} value={topic}>{topic}</option>)}</select></label>
@@ -1501,7 +1535,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.tasks ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('tasks') }}>
+      <div className={`dashboard-panel ${activeSection === 'tasks' ? 'is-active' : ''} ${collapsedDashboardSections.tasks ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('tasks') }}>
       <section className="tasks-section" id="tasks" aria-labelledby="tasks-title">
         <div className="statistics-heading"><div><span className="section-kicker">צעד קטן בכל פעם</span><h2 id="tasks-title">המשימות שלי</h2></div><span className="tasks-streak">רצף נוכחי: <strong>{activityStreak}</strong> ימים</span>{sectionControls('tasks', 'המשימות שלי')}</div>
         <div className="tasks-grid">{missionItems.map(mission => {
@@ -1528,7 +1562,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.ideas ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('ideas') }}>
+      <div className={`dashboard-panel ${activeSection === 'ideas' ? 'is-active' : ''} ${collapsedDashboardSections.ideas ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('ideas') }}>
       <section className="ideas-section" id="ideas" aria-labelledby="ideas-title">
         <div className="statistics-heading"><div><span className="section-kicker">איך המחשבות שלך משתנות?</span><h2 id="ideas-title">מסע הרעיונות שלי</h2></div><span className="statistics-period">{ideas.length} רעיונות</span>{sectionControls('ideas', 'מסע הרעיונות')}</div>
         <form className="idea-create-form" onSubmit={createIdea}>
@@ -1582,7 +1616,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.recommendations ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('recommendations') }}>
+      <div className={`dashboard-panel ${activeSection === 'recommendations' ? 'is-active' : ''} ${collapsedDashboardSections.recommendations ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('recommendations') }}>
       <section className="recommendations-section" id="recommendations" aria-labelledby="recommendations-title">
         <div className="statistics-heading"><div><span className="section-kicker">תובנות מהפעילות שלך</span><h2 id="recommendations-title">המלצות אישיות</h2></div><span className="statistics-period">השבוע לעומת הקודם</span>{sectionControls('recommendations', 'המלצות אישיות')}</div>
         <div className="recommendations-list">{personalRecommendations.map((recommendation, index) => <article className="recommendation-item" key={`${recommendation.title}-${index}`}>
@@ -1601,11 +1635,11 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.progress ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('progress') }}>
+      <div className={`dashboard-panel ${activeSection === 'progress' ? 'is-active' : ''} ${collapsedDashboardSections.progress ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('progress') }}>
       <section className="progress-section" id="progress" aria-labelledby="progress-title">
         <div className="statistics-heading"><div><span className="section-kicker">הישגים משניים</span><h2 id="progress-title">ענפי זהות ואתגרי נושאים</h2></div>{sectionControls('progress', 'ענפי זהות ואתגרי נושאים')}</div>
         <div className={`identity-branches ${crestEarned ? 'is-crest-unlocked' : 'is-crest-locked'}`} aria-labelledby="identity-branches-title">
-          <div className="identity-branches-heading"><div><span className="section-kicker">{crestEarned ? 'השלב הבא בזהות' : 'מסלולי זהות נעולים'}</span><h3 id="identity-branches-title">התקדמות בעשרת ענפי הסמל האישי</h3><p className="identity-mode-caption">{crestEarned ? currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו' : 'פתחו את הסמל הבסיסי ב־20 נקודות פעילות כדי להתחיל לפתוח את תשעת הענפים.'}</p></div><span>{earnedIdentityDirections.filter(direction => direction.id !== 'crest-of-the-voice').length} מתוך 9 ענפים נפתחו</span></div>
+          <div className="identity-branches-heading"><div><span className="section-kicker">{crestEarned ? 'השלב הבא בזהות' : 'מסלולי זהות נעולים'}</span><h3 id="identity-branches-title">התקדמות בעשרת ענפי הסמל האישי</h3><p className="identity-mode-caption">{crestEarned ? currentUser?.identityMode === 'custom' ? 'מצב ידני · הענף הנבחר נשאר עד שתשנה אותו' : 'מצב אוטומטי · הסמל עובר לענף חדש כשאתה פותח אותו' : 'פתחו את הסמל הבסיסי ב־20 נקודות פעילות כדי להתחיל לפתוח את תשעת הענפים.'}</p></div><span>{earnedIdentityBadgeCount}/10 ענפים נפתחו</span></div>
           {crestEarned && <div className="identity-mode-switch" role="group" aria-label="בחירת אופן התפתחות הסמל">
             <button type="button" className={currentUser?.identityMode !== 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode !== 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('auto')}>התפתחות אוטומטית</button>
             <button type="button" className={currentUser?.identityMode === 'custom' ? 'is-selected' : ''} aria-pressed={currentUser?.identityMode === 'custom'} disabled={identitySaving} onClick={() => changeIdentityMode('custom')}>בחירה ונעיצה</button>
@@ -1670,7 +1704,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.blog ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('blog') }}>
+      <div className={`dashboard-panel ${activeSection === 'blog' ? 'is-active' : ''} ${collapsedDashboardSections.blog ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('blog') }}>
       <section className="blog-section" id="blog" aria-labelledby="blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">המילים שלך</span><h2 id="blog-title">הבלוג שלי</h2></div><span className="statistics-period">{myBlogPosts.length} פוסטים</span>{sectionControls('blog', 'הבלוג שלי')}</div>
         <label className="blog-search"><span>חיפוש בבלוג שלי</span><input type="search" value={myBlogSearchText} onChange={event => setMyBlogSearchText(event.target.value)} placeholder="כותרת, תוכן או תגובה..." aria-label="חיפוש בבלוג שלי" /><small>{filteredMyBlogPosts.length} מתוך {myBlogPosts.length} פוסטים</small></label>
@@ -1703,7 +1737,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections['community-blog'] ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('community-blog') }}>
+      <div className={`dashboard-panel ${activeSection === 'community-blog' ? 'is-active' : ''} ${collapsedDashboardSections['community-blog'] ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('community-blog') }}>
       <section className="blog-section community-blog-section" id="community-blog" aria-labelledby="community-blog-title">
         <div className="statistics-heading"><div><span className="section-kicker">כותבים וקוראים יחד</span><h2 id="community-blog-title">בלוג המגיבים</h2></div><span className="statistics-period">{communityBlogPosts.length} פוסטים</span>{sectionControls('community-blog', 'בלוג המגיבים')}</div>
         <label className="blog-search"><span>חיפוש בבלוג המגיבים</span><input type="search" value={communityBlogSearchText} onChange={event => setCommunityBlogSearchText(event.target.value)} placeholder="כותרת, כותב, תוכן או תגובה..." aria-label="חיפוש בבלוג המגיבים" /><small>{filteredCommunityBlogPosts.length} מתוך {communityBlogPosts.length} פוסטים</small></label>
@@ -1721,7 +1755,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.leaderboard ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('leaderboard') }}>
+      <div className={`dashboard-panel ${activeSection === 'leaderboard' ? 'is-active' : ''} ${collapsedDashboardSections.leaderboard ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('leaderboard') }}>
       <section className="leaderboard-section" id="leaderboard" aria-labelledby="leaderboard-title">
         <div className="statistics-heading"><div><span className="section-kicker">הקהילה שלנו</span><h2 id="leaderboard-title">טבלת מגיבים עולמית</h2></div><span className="statistics-period">{globalLeaderboard.length} מגיבים</span>{sectionControls('leaderboard', 'טבלת מגיבים עולמית')}</div>
         <p className="leaderboard-intro">הדירוג מבוסס על נקודות ההתקדמות של כל משתמש.</p>
@@ -1747,7 +1781,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel ${collapsedDashboardSections.settings ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('settings') }}>
+      <div className={`dashboard-panel ${activeSection === 'settings' ? 'is-active' : ''} ${collapsedDashboardSections.settings ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('settings') }}>
       <section className="settings-section" id="settings" aria-labelledby="settings-title">
         <div className="statistics-heading"><div><span className="section-kicker">החשבון שלך</span><h2 id="settings-title">הגדרות</h2></div>{sectionControls('settings', 'הגדרות')}</div>
         <div className="settings-grid">
@@ -1791,7 +1825,7 @@ function App() {
       </section>
       </div>
 
-      <div className={`dashboard-panel comments-dashboard-panel ${collapsedDashboardSections.comments ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('comments') }} id="comments">
+      <div className={`dashboard-panel comments-dashboard-panel ${activeSection === 'comments' ? 'is-active' : ''} ${collapsedDashboardSections.comments ? 'is-collapsed' : ''}`} style={{ order: dashboardOrder.indexOf('comments') }} id="comments">
       <div className="comments-dashboard-heading"><div><span className="section-kicker">הספרייה שלך</span><h2>התגובות שלי</h2></div>{sectionControls('comments', 'התגובות שלי')}</div>
       <section className={`card form-card ${editingConversationId ? 'is-editing' : 'is-new'}`}>
         <div className="section-heading">
@@ -1925,7 +1959,26 @@ function App() {
             : <div className="empty-state public-profile-empty"><h3>עדיין אין פוסטים</h3><p>הפוסטים שיפורסמו יופיעו כאן.</p></div>)}
         </section>
       </div>}
+      </main>
       <footer className="app-footer">© All rights reserved to Eliran Takiya</footer>
+      <nav className={`mobile-bottom-nav ${isMobileMoreOpen ? 'has-more-open' : ''}`} aria-label="ניווט מהיר">
+        <div className="mobile-more-menu" id="mobile-more-menu" hidden={!isMobileMoreOpen}>
+          {DASHBOARD_NAV_ITEMS.filter(item => !MOBILE_PRIMARY_NAV_IDS.includes(item.id)).sort((first, second) => dashboardOrder.indexOf(first.id) - dashboardOrder.indexOf(second.id)).map(item => <button key={item.id} type="button" className={activeSection === item.id ? 'is-active' : ''} aria-current={activeSection === item.id ? 'page' : undefined} onClick={event => navigateToSection(event, item.id)}>
+            <span aria-hidden="true">{item.icon}</span>{item.label}
+          </button>)}
+        </div>
+        <div className="mobile-bottom-nav-items">
+          {DASHBOARD_NAV_ITEMS.filter(item => MOBILE_PRIMARY_NAV_IDS.includes(item.id)).map(item => <button key={item.id} type="button" className={activeSection === item.id ? 'is-active' : ''} aria-current={activeSection === item.id ? 'page' : undefined} onClick={event => navigateToSection(event, item.id)}>
+            <span aria-hidden="true">{item.icon}</span><small>{({ home: 'ראשי', comments: 'תגובות', statistics: 'נתונים', ideas: 'רעיונות' })[item.id]}</small>
+          </button>)}
+          <button className="notification-bell" type="button" disabled aria-label="התראות, יוגדרו בהמשך" title="התראות יוגדרו בהמשך">
+            <span aria-hidden="true">🔔</span><small>התראות</small>
+          </button>
+          <button type="button" className={`mobile-more-toggle ${isMobileMoreOpen || !MOBILE_PRIMARY_NAV_IDS.includes(activeSection) ? 'is-active' : ''}`} aria-expanded={isMobileMoreOpen} aria-controls="mobile-more-menu" onClick={() => setIsMobileMoreOpen(open => !open)}>
+            <span aria-hidden="true">•••</span><small>עוד</small>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
