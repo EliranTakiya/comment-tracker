@@ -120,10 +120,18 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
 
   fireEvent.click(container.querySelector('.nav-comments'));
   await waitFor(() => expect(window.location.hash).toBe('#comments'));
+  fireEvent.click([...container.querySelectorAll('.dashboard-panel.is-active .card-update-button')]
+    .find(button => button.textContent.trim() === 'עדכן כרטיס'));
+  const cancelEditButton = await screen.findByRole('button', { name: 'ביטול' });
+  expect(cancelEditButton).toBeVisible();
+  expect(container.querySelector('.form-card input')).toHaveValue(conversation.siteName);
+  fireEvent.click(cancelEditButton);
+  expect(screen.getByRole('heading', { name: 'הוסף תגובה למעקב' })).toBeInTheDocument();
+
   const addToBlogButton = [...container.querySelectorAll('.dashboard-panel.is-active button')]
     .find(button => button.textContent.includes('הוסף לבלוג'));
   fireEvent.click(addToBlogButton);
   await waitFor(() => expect(window.location.hash).toBe('#blog'));
   expect(container.querySelector('.dashboard-panel.is-active #blog .blog-compose')).toHaveClass('is-open');
   expect(container.querySelector('#blog .blog-compose textarea')).toHaveValue(`${blogPost.content}\n\n${conversation.yourComment}`);
-});
+}, 15000);

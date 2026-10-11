@@ -1859,7 +1859,7 @@ function App() {
           </div>
           <div className="conversation-form-actions">
             <button className="primary-button" onClick={submit}>{editingConversationId ? 'שמור עדכון' : 'שמור תגובה'} <span>←</span></button>
-            {editingConversationId && <button className="conversation-edit-cancel" type="button" onClick={cancelConversationEdit}>ביטול עריכה</button>}
+            {editingConversationId && <button className="conversation-edit-cancel" type="button" onClick={cancelConversationEdit}>ביטול</button>}
           </div>
         </div>
       </section>

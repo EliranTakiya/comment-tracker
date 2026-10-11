@@ -245,7 +245,7 @@ h1, h2, h3, p { margin-top: 0; }
 .toggle-icon { display: grid; width: 28px; height: 28px; place-items: center; color: var(--mint-strong); border-radius: 50%; background: var(--mint); font-size: 20px; line-height: 1; transition: transform .3s, background .2s; }
 .toggle-icon.is-open { transform: rotate(180deg); background: #bcebd2; }
 .form-content { max-height: 0; overflow: hidden; opacity: 0; transition: max-height .4s ease, opacity .25s ease, margin-top .35s ease; }
-.form-content.is-open { max-height: 620px; margin-top: 22px; opacity: 1; }
+.form-content.is-open { max-height: 1200px; margin-top: 22px; opacity: 1; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0 16px; }
 .input-field { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--muted); font-size: 12px; font-weight: 700; }
 .input-field > span { flex: 0 0 auto; white-space: nowrap; }
