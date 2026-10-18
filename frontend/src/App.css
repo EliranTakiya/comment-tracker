@@ -2140,7 +2140,7 @@ body:has(.app) { overflow: hidden; }
 .home-challenges-slide .identity-branches-heading { margin-bottom: 9px; }
 .home-challenges-slide .topic-challenge-grid { gap: 8px; }
 .home-challenges-slide .topic-challenge { gap: 7px; padding: 9px 10px; }
-.home-challenges-slide .achievement-wall { margin: 0; padding: 12px 0; }
+.home-challenges-slide .achievement-wall { width: calc(100% + 48px); margin: 0 -24px; padding: 12px 24px; }
 .home-challenges-slide .achievement-wall-heading { margin-bottom: 9px; }
 .home-challenges-slide .achievement-badge-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .home-slide-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -2169,7 +2169,9 @@ body:has(.app) { overflow: hidden; }
   .home-challenges-slide .achievement-badge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .home-stage-actions { gap: 7px; padding: 8px 10px 12px; }
   .home-stage-actions button { min-width: 0; flex: 1 1 0; padding-inline: 9px; font-size: 11px; }
-  .app.is-home-active .home-first-screen { flex: 1 1 auto; height: auto; min-height: 0; padding-bottom: 154px; }
+  .home-challenges-slide .achievement-wall { width: calc(100% + 28px); margin-inline: -14px; padding: 12px 14px; }
+  .home-challenges-slide .achievement-badge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .app.is-home-active .home-first-screen { flex: 1 1 auto; height: auto; min-height: 0; padding-bottom: 124px; }
   .app.is-home-active .home-first-screen .home-cosmic-stage { flex: 1 1 0; }
   .home-lower-controls { position: absolute; z-index: 4; right: 0; bottom: 17px; left: 0; display: flex; flex: 0 0 auto; gap: 7px; margin: 0; padding: 0 7px; }
   .app.is-home-active .home-cosmic-stage .crest-evolution,
@@ -2190,6 +2192,10 @@ body:has(.app) { overflow: hidden; }
   .home-quick-stats article { gap: 2px; padding: 3px 2px; border-width: 1px; border-radius: 6px; }
   .home-quick-stats strong { font-size: clamp(18px, 5.5vw, 24px); }
   .home-quick-stats span { font-size: 8px; line-height: 1.15; }
+}
+@media (max-width: 480px) {
+  .home-challenges-slide .achievement-wall { width: calc(100% + 28px); margin-inline: -14px; padding-inline: 10px; }
+  .home-challenges-slide .achievement-badge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 }
 @media (max-width: 700px) and (max-height: 720px) {
   .app.is-home-active .home-cosmic-stage .crest-evolution,
