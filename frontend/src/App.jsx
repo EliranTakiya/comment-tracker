@@ -179,6 +179,10 @@ function App() {
     const requestedSection = window.location.hash.slice(1);
     return DASHBOARD_NAV_ITEMS.some(item => item.id === requestedSection) ? requestedSection : 'home';
   });
+  const [homePanel, setHomePanel] = useState('home');
+  const [chatDraft, setChatDraft] = useState('');
+  const [localChatMessages, setLocalChatMessages] = useState([]);
+  const homeTouchStartRef = useRef(null);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [nickname, setNickname] = useState('');
   const [nicknameDraft, setNicknameDraft] = useState('');
@@ -243,6 +247,33 @@ function App() {
   const navigateToSection = (event, sectionId) => {
     event.preventDefault();
     goToDashboardSection(sectionId);
+  };
+
+  const handleHomeTouchStart = event => {
+    const touch = event.changedTouches[0];
+    homeTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleHomeTouchEnd = event => {
+    const start = homeTouchStartRef.current;
+    homeTouchStartRef.current = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+    setHomePanel(previous => {
+      if (deltaX > 0) return previous === 'chat' ? 'home' : previous === 'home' ? 'challenges' : previous;
+      return previous === 'challenges' ? 'home' : previous === 'home' ? 'chat' : previous;
+    });
+  };
+
+  const sendLocalChatMessage = event => {
+    event.preventDefault();
+    const message = chatDraft.trim();
+    if (!message) return;
+    setLocalChatMessages(previous => [...previous, { id: `${Date.now()}-${previous.length}`, author: nickname || 'אני', text: message }]);
+    setChatDraft('');
   };
 
   useEffect(() => {
@@ -1432,7 +1463,7 @@ function App() {
   }
 
   return (
-    <div className={`app theme-${theme}`} dir="rtl">
+    <div className={`app theme-${theme} ${activeSection === 'home' ? 'is-home-active' : ''}`} dir="rtl">
       {successMessage && <div className="success-toast" role="status" aria-live="polite"><span aria-hidden="true">✓</span>{successMessage}</div>}
       <nav className={`main-nav ${isPublicProfileOpen ? 'is-profile-open' : ''}`} aria-label="ניווט ראשי">
         <div className="main-nav-links">
@@ -1444,6 +1475,30 @@ function App() {
       </nav>
       <main className="app-screens">
       <section className={`dashboard-screen home-screen ${activeSection === 'home' ? 'is-active' : ''}`} aria-label="ראשי">
+      <div className="home-carousel" onTouchStart={handleHomeTouchStart} onTouchEnd={handleHomeTouchEnd}>
+      <div className="home-carousel-track" style={{ '--home-panel-offset': homePanel === 'challenges' ? '0%' : homePanel === 'home' ? '-33.333333%' : '-66.666667%' }}>
+      <section className={`home-slide home-challenges-slide ${homePanel === 'challenges' ? 'is-current' : ''}`} aria-label="אתגרי נושאים וקיר הבאדג׳ים" aria-hidden={homePanel !== 'challenges'} inert={homePanel !== 'challenges'}>
+      <section className="topic-challenges topic-challenges-home" id="topic-challenges" aria-labelledby="topic-challenges-title">
+        <div className="identity-branches-heading"><div><span className="section-kicker">CHALLENGES</span><h2 id="topic-challenges-title">אתגרי נושאים</h2></div><span>באדג׳ נפרד לכל נושא</span></div>
+        <div className="topic-challenge-grid">{topicChallenges.map((challenge, index) => <article className={`topic-challenge topic-challenge-${index} ${challenge.earned ? 'is-earned' : ''}`} key={challenge.topic}>
+          <div className="topic-challenge-heading"><span className={`topic-challenge-mark challenge-mark-${index}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[index]}</span><div><strong>{challenge.topic}</strong><small>{challenge.earned ? 'הבאדג׳ נחשף' : 'אתגר רעיונות בנושא'}</small></div><b>{challenge.count}/{TOPIC_CHALLENGE_GOAL}</b></div>
+          <div className="mission-track" role="progressbar" aria-label={`התקדמות באתגר ${challenge.topic}`} aria-valuenow={challenge.progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${challenge.progress}%` }} /></div>
+          <div className="topic-challenge-footer"><span>{challenge.count} רעיונות מקושרים לנושא</span><strong>{challenge.earned ? 'הושלם' : `עוד ${TOPIC_CHALLENGE_GOAL - challenge.count} לחשיפה`}</strong></div>
+        </article>)}</div>
+      </section>
+      <section className="achievement-wall" id="achievement-wall" aria-labelledby="achievement-wall-title">
+        <div className="achievement-wall-heading"><div><span className="section-kicker">ההישגים שלך</span><h2 id="achievement-wall-title">קיר הבאדג׳ים</h2></div><span>{earnedIdentityBadgeCount} / {IDENTITY_DIRECTIONS.length} נפתחו</span></div>
+        {earnedIdentityBadgeCount ? <div className="achievement-badge-grid">{identityBadgeEntries.filter(entry => entry.earned).map(({ direction }) => <article key={direction.id} className="achievement-badge is-earned">
+          <span className="achievement-badge-art" aria-hidden="true">{direction.icon}</span>
+          <strong>{direction.name}</strong>
+          <small>{direction.description}</small>
+          <span className="achievement-badge-state">{direction.id === visibleIdentityDirection.id ? 'הסמל הפעיל' : 'נפתח'}</span>
+        </article>)}</div> : <p className="achievement-wall-empty">הבאדג׳ים שהשגת יופיעו כאן.</p>}
+      </section>
+      <div className="home-slide-actions"><button type="button" onClick={() => setHomePanel('home')}>ראשי</button><button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button></div>
+      </section>
+      <section className={`home-slide home-main-slide ${homePanel === 'home' ? 'is-current' : ''}`} aria-label="מסך ראשי" aria-hidden={homePanel !== 'home'} inert={homePanel !== 'home'}>
+      <div className="home-first-screen">
       <div className={`home-cosmic-stage ${crestEarned ? 'is-earned' : 'is-locked'}`}>
       <header className="hero" id="home">
         <div className="theme-picker">
@@ -1499,24 +1554,33 @@ function App() {
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
         </div>
       </section>
+      <div className="home-stage-actions">
+        <button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button>
+        <button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button>
       </div>
-      <section className="topic-challenges topic-challenges-home" aria-labelledby="topic-challenges-title">
-        <div className="identity-branches-heading"><div><span className="section-kicker">CHALLENGES</span><h2 id="topic-challenges-title">אתגרי נושאים</h2></div><span>באדג׳ נפרד לכל נושא</span></div>
-        <div className="topic-challenge-grid">{topicChallenges.map((challenge, index) => <article className={`topic-challenge topic-challenge-${index} ${challenge.earned ? 'is-earned' : ''}`} key={challenge.topic}>
-          <div className="topic-challenge-heading"><span className={`topic-challenge-mark challenge-mark-${index}`} aria-hidden="true">{TOPIC_CHALLENGE_ICONS[index]}</span><div><strong>{challenge.topic}</strong><small>{challenge.earned ? 'הבאדג׳ נחשף' : 'אתגר רעיונות בנושא'}</small></div><b>{challenge.count}/{TOPIC_CHALLENGE_GOAL}</b></div>
-          <div className="mission-track" role="progressbar" aria-label={`התקדמות באתגר ${challenge.topic}`} aria-valuenow={challenge.progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${challenge.progress}%` }} /></div>
-          <div className="topic-challenge-footer"><span>{challenge.count} רעיונות מקושרים לנושא</span><strong>{challenge.earned ? 'הושלם' : `עוד ${TOPIC_CHALLENGE_GOAL - challenge.count} לחשיפה`}</strong></div>
-        </article>)}</div>
+      </div>
+      <section className="home-quick-stats" aria-label="סיכום מהיר">
+        <article><strong>{convos.length}</strong><span>תגובות ששמרתי</span></article>
+        <article><strong>{totalCommentLikes}</strong><span>לייקים שקיבלתי</span></article>
+        <article><strong>{savedSites.length}</strong><span>אתרים שהגבתי בהם</span></article>
       </section>
-      <section className="achievement-wall" aria-labelledby="achievement-wall-title">
-        <div className="achievement-wall-heading"><div><span className="section-kicker">ההישגים שלך</span><h2 id="achievement-wall-title">קיר הבאדג׳ים</h2></div><span>{earnedIdentityBadgeCount} / {IDENTITY_DIRECTIONS.length} נפתחו</span></div>
-        {earnedIdentityBadgeCount ? <div className="achievement-badge-grid">{identityBadgeEntries.filter(entry => entry.earned).map(({ direction }) => <article key={direction.id} className="achievement-badge is-earned">
-          <span className="achievement-badge-art" aria-hidden="true">{direction.icon}</span>
-          <strong>{direction.name}</strong>
-          <small>{direction.description}</small>
-          <span className="achievement-badge-state">{direction.id === visibleIdentityDirection.id ? 'הסמל הפעיל' : 'נפתח'}</span>
-        </article>)}</div> : <p className="achievement-wall-empty">הבאדג׳ים שהשגת יופיעו כאן.</p>}
+      </div>
       </section>
+      <section className={`home-slide home-chat-slide ${homePanel === 'chat' ? 'is-current' : ''}`} aria-label="צ׳אט המגיבים" aria-hidden={homePanel !== 'chat'} inert={homePanel !== 'chat'}>
+        <header className="home-slide-heading"><div><span className="section-kicker">קהילת המגיבים</span><h2>צ׳אט המגיבים</h2></div><span className="chat-local-note">טיוטה מקומית בלבד · ללא שרת</span></header>
+        <div className="local-chat-messages" aria-live="polite">
+          {localChatMessages.length ? localChatMessages.map(message => <article className="local-chat-message" key={message.id}><strong>{message.author}</strong><p>{message.text}</p></article>) : <p className="local-chat-empty">עדיין אין הודעות. אפשר לכתוב כאן הודעה זמנית.</p>}
+        </div>
+        <form className="local-chat-compose" onSubmit={sendLocalChatMessage}>
+          <label htmlFor="local-chat-draft">הודעה לצ׳אט</label>
+          <textarea id="local-chat-draft" value={chatDraft} onChange={event => setChatDraft(event.target.value)} maxLength="500" rows="2" placeholder="כתבו הודעה…" />
+          <button type="submit" disabled={!chatDraft.trim()}>שליחה</button>
+        </form>
+        <div className="home-slide-actions"><button type="button" onClick={() => setHomePanel('home')}>ראשי</button><button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button></div>
+      </section>
+      </div>
+      <div className="home-carousel-indicator" aria-hidden="true"><span className={homePanel === 'challenges' ? 'is-current' : ''} /><span className={homePanel === 'home' ? 'is-current' : ''} /><span className={homePanel === 'chat' ? 'is-current' : ''} /></div>
+      </div>
       {dashboardFooter}
       </section>
 
@@ -1594,15 +1658,16 @@ function App() {
                   <option value="">בחרו פריט לציר הזמן</option>
                   {ideaEntryKind === 'conversation' ? convos.map(conversation => <option key={conversation._id} value={conversation._id}>{[conversation.siteName, conversation.pageTitle || conversation.yourComment].filter(Boolean).join(' · ').slice(0, 140)}</option>) : myBlogPosts.map(post => <option key={post._id} value={post._id}>{post.title}</option>)}
                 </select></label>
-                <label className="idea-entry-note"><span>הערה אישית על הפריט <small>פרטית לך בלבד</small></span><textarea value={ideaEntryNote} onChange={event => setIdeaEntryNote(event.target.value)} maxLength="500" rows="2" placeholder="מה חשבת על הרעיון בשלב הזה? (לא חובה)" /></label>
+                <label className="idea-entry-note"><span>הערה אישית <small>פרטית לך בלבד</small></span><textarea value={ideaEntryNote} onChange={event => setIdeaEntryNote(event.target.value)} maxLength="500" rows="2" placeholder="מה חשבת על הרעיון בשלב הזה? (לא חובה)" /></label>
                 <button className="idea-add-button" type="submit" disabled={!ideaEntryTargetId}>הוספה לציר הזמן</button>
               </form>
               {ideaTimelineEntries.length ? <ol className="idea-timeline">{ideaTimelineEntries.map(entry => {
                 const noteKey = `${selectedIdea._id}:${entry._id}`;
                 const missingSource = !entry.source;
                 const entryTitle = entry.kind === 'conversation'
-                  ? entry.source ? [entry.source.siteName, entry.source.pageTitle].filter(Boolean).join(' · ') || 'תגובה שמורה' : 'התגובה השמורה כבר לא זמינה'
-                  : entry.source?.title || 'הפוסט כבר לא זמין';
+                  ? entry.source ? [entry.source.siteName, entry.source.pageTitle].filter(Boolean).join(' · ') || 'התגובה השמורה כבר לא זמינה'
+                  : 'התגובה השמורה כבר לא זמינה'
+                  : entry.source?.title || 'הפוסט השמור כבר לא זמין';
                 const entryBody = entry.kind === 'conversation' ? entry.source?.yourComment : entry.source?.content;
                 return <li className="idea-timeline-item" key={entry._id}>
                   <span className="idea-timeline-marker" aria-hidden="true">{entry.kind === 'conversation' ? '↩' : '✎'}</span>
@@ -1636,7 +1701,7 @@ function App() {
             <span>בשבוע שעבר <b>{site.previous}</b></span>
           </li>)}</ul> : <p>אין עדיין נתוני פעילות לפי אתר לתקופה הזו. שמירת תגובות עם שם אתר תציג כאן השוואה.</p>}
         </div>
-        <p className="recommendations-note">ההמלצות מבוססות על תגובות ששמרת ועל האתרים שהיו פעילים בהם.</p>
+        <p className="recommendations-note">ההמלצות מבוססות על תגובות ששמרתי ועל האתרים שהיו פעילים בהם.</p>
       </section>
       {dashboardFooter}
       </div>
@@ -1757,7 +1822,7 @@ function App() {
           <label className="blog-filter-field"><span>עד תאריך</span><input type="date" value={communityBlogDateRange.to} min={communityBlogDateRange.from || undefined} onChange={event => setCommunityBlogDateRange(previous => ({ ...previous, to: event.target.value }))} /></label>
           {(communityBlogAuthorFilter !== 'all' || communityBlogSiteFilter !== 'all' || communityBlogTopicFilter !== 'all' || communityBlogDateRange.from || communityBlogDateRange.to) && <button className="blog-filter-reset" type="button" onClick={() => { setCommunityBlogAuthorFilter('all'); setCommunityBlogSiteFilter('all'); setCommunityBlogTopicFilter('all'); setCommunityBlogDateRange({ from: '', to: '' }); }}>ניקוי סינון</button>}
         </div>
-        <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">פופולרי ביותר</option></select></label>
+        <label className="blog-sort-control"><span>מיון פוסטים</span><select value={blogSortOrder} onChange={event => setBlogSortOrder(event.target.value)} aria-label="מיון פוסטים"><option value="newest">חדש ביותר</option><option value="popular">ipopular</option></select></label>
         <p className="blog-author-note">כאן מופיעים הפוסטים של כל הכותבים. אפשר להגיב ולדרג כל פוסט.</p>
         {filteredCommunityBlogPosts.length ? <div className="blog-post-list">{filteredCommunityBlogPosts.map(post => renderBlogPost(post, true))}</div> : <div className="empty-state blog-empty"><span>✎</span><h3>{communityBlogPosts.length ? 'לא נמצאו פוסטים מתאימים' : 'הבלוג הקהילתי עוד ריק'}</h3><p>{communityBlogPosts.length ? 'אפשר לשנות את החיפוש או את המסננים.' : 'פרסמו את הפוסט הראשון שלכם כדי להתחיל את השיחה.'}</p></div>}
       </section>
@@ -1942,9 +2007,9 @@ function App() {
               </div>
               {ideaLinkConversationId === conversation._id && <form className="comment-idea-link-form" onSubmit={event => ideas.length ? linkConversationToIdea(event, conversation) : createIdeaAndLinkConversation(event, conversation)}>
                 {ideas.length ? <label><span>בחירת רעיון</span><select required value={ideaLinkSelectedIdeaId} onChange={event => setIdeaLinkSelectedIdeaId(event.target.value)}><option value="">בחרו רעיון</option>{ideas.map(idea => <option key={idea._id} value={idea._id}>{idea.title}</option>)}</select></label>
-                  : <label><span>שם הרעיון הראשון</span><input required maxLength="100" value={ideaLinkNewTitle} onChange={event => setIdeaLinkNewTitle(event.target.value)} placeholder="למשל: תחבורה ציבורית בשבת" /> </label>}
+                  : <label><span>שם הרעיון הראשון</span><input required maxLength="100" value={ideaLinkPostNewTitle} onChange={event => setIdeaLinkPostNewTitle(event.target.value)} placeholder="למשל: תחבורה ציבורית בשבת" /> </label>}
                 <label className="comment-idea-note"><span>הערה אישית <small>פרטית לך בלבד</small></span><textarea maxLength="500" rows="2" value={ideaLinkNote} onChange={event => setIdeaLinkNote(event.target.value)} placeholder="מה חשבת על הרעיון כשכתבת את התגובה? (לא חובה)" /></label>
-                <div className="comment-idea-form-actions"><button className="idea-add-button" type="submit" disabled={ideas.length ? !ideaLinkSelectedIdeaId : !ideaLinkNewTitle.trim()}>{ideas.length ? 'הוסף למסע הרעיון' : 'צור רעיון והוסף תגובה'}</button><button className="comment-idea-cancel" type="button" onClick={() => setIdeaLinkConversationId('')}>ביטול</button></div>
+                <div className="comment-idea-form-actions"><button className="idea-add-button" type="submit" disabled={ideas.length ? !ideaLinkSelectedIdeaId : !ideaLinkPostNewTitle.trim()}>{ideas.length ? 'הוסף למסע הרעיון' : 'צור רעיון והוסף תגובה'}</button><button className="comment-idea-cancel" type="button" onClick={() => setIdeaLinkConversationId('')}>ביטול</button></div>
               </form>}
             </article>
           );
@@ -1968,7 +2033,7 @@ function App() {
           {publicProfileLoading && <p className="public-profile-message">טוען את הפוסטים…</p>}
           {publicProfile && (publicProfile.posts.length
             ? <div className="blog-post-list public-profile-posts">{publicProfile.posts.map(post => renderBlogPost(post, false))}</div>
-            : <div className="empty-state public-profile-empty"><h3>עדיין אין פוסטים</h3><p>הפוסטים שיפורסמו יופיעו כאן.</p></div>)}
+            : <div className="empty-state public-profile-empty"><h3>עדיין אין פוסטים</h3><p>הפוסטים שפורסמו יופיעו כאן.</p></div>)}
         </section>
       </div>}
       </main>
@@ -1980,7 +2045,7 @@ function App() {
         </div>
         <div className="mobile-bottom-nav-items">
           {DASHBOARD_NAV_ITEMS.filter(item => MOBILE_PRIMARY_NAV_IDS.includes(item.id)).map(item => <button key={item.id} type="button" className={activeSection === item.id ? 'is-active' : ''} aria-current={activeSection === item.id ? 'page' : undefined} onClick={event => navigateToSection(event, item.id)}>
-            <span aria-hidden="true">{item.icon}</span><small>{({ home: 'ראשי', comments: 'תגובות', statistics: 'נתונים', ideas: 'רעיונות' })[item.id]}</small>
+            <span aria-hidden="true">{item.icon}</span><small>{({ home: 'ראשי', comments: 'תגובות', statistics: 'נתונים', ideas: 'oodles' })[item.id]}</small>
           </button>)}
           <button className="notification-bell" type="button" disabled aria-label="התראות, יוגדרו בהמשך" title="התראות יוגדרו בהמשך">
             <span aria-hidden="true">🔔</span><small>התראות</small>
