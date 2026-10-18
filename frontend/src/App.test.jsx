@@ -90,14 +90,14 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
   await waitFor(() => expect(container.querySelectorAll('.achievement-wall .achievement-badge')).toHaveLength(2));
   expect(container.querySelectorAll('.home-quick-stats article')).toHaveLength(3);
   const homeCarousel = container.querySelector('.home-carousel');
-  fireEvent.touchStart(homeCarousel, { changedTouches: [{ clientX: 250, clientY: 120 }] });
-  fireEvent.touchEnd(homeCarousel, { changedTouches: [{ clientX: 150, clientY: 120 }] });
+  fireEvent.touchStart(homeCarousel, { changedTouches: [{ clientX: 150, clientY: 120 }] });
+  fireEvent.touchEnd(homeCarousel, { changedTouches: [{ clientX: 250, clientY: 120 }] });
   await waitFor(() => expect(container.querySelector('.home-chat-slide')).toHaveClass('is-current'));
   fireEvent.change(container.querySelector('#local-chat-draft'), { target: { value: 'הודעת בדיקה מקומית' } });
   fireEvent.click(container.querySelector('.home-chat-slide button[type="submit"]'));
   expect(container.querySelector('.local-chat-messages')).toHaveTextContent('הודעת בדיקה מקומית');
-  fireEvent.touchStart(homeCarousel, { changedTouches: [{ clientX: 150, clientY: 120 }] });
-  fireEvent.touchEnd(homeCarousel, { changedTouches: [{ clientX: 250, clientY: 120 }] });
+  fireEvent.touchStart(homeCarousel, { changedTouches: [{ clientX: 250, clientY: 120 }] });
+  fireEvent.touchEnd(homeCarousel, { changedTouches: [{ clientX: 150, clientY: 120 }] });
   await waitFor(() => expect(container.querySelector('.home-main-slide')).toHaveClass('is-current'));
   fireEvent.click(container.querySelector('.home-main-slide .home-stage-actions button'));
   await waitFor(() => expect(container.querySelector('.home-challenges-slide')).toHaveClass('is-current'));

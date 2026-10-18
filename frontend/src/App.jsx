@@ -263,8 +263,8 @@ function App() {
     const deltaY = touch.clientY - start.y;
     if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
     setHomePanel(previous => {
-      if (deltaX > 0) return previous === 'chat' ? 'home' : previous === 'home' ? 'challenges' : previous;
-      return previous === 'challenges' ? 'home' : previous === 'home' ? 'chat' : previous;
+      if (deltaX > 0) return previous === 'challenges' ? 'home' : previous === 'home' ? 'chat' : previous;
+      return previous === 'chat' ? 'home' : previous === 'home' ? 'challenges' : previous;
     });
   };
 
@@ -1550,7 +1550,7 @@ function App() {
       <section className={`crest-evolution ${crestEarned ? 'is-earned' : 'is-hidden'}`} id="identity" aria-labelledby="identity-title" style={{ '--topic-mix': topicMixGradient, '--crest-progress': `${identityProgress}%` }}>
         <div className={`crest-artwork crest-form-${visibleIdentityDirection.id}`} aria-hidden="true"><span className="crest-rim"><span className="crest-core"><span className="crest-core-fill" style={{ height: `${identityProgress}%` }} /><span className="crest-core-symbol">{crestEarned ? visibleIdentityDirection.icon : '·'}</span></span></span><span className="crest-orbit crest-orbit-one" /><span className="crest-orbit crest-orbit-two" /></div>
         <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'הסמל הבסיסי שלך נפתח · הזהות ממשיכה להתפתח' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? currentUser?.identityMode === 'custom' ? 'הסמל נעוץ על הענף שבחרת. בכל עת אפשר לחזור להתפתחות אוטומטית.' : 'הסמל משתנה אוטומטית כשהפעילות שלך פותחת ענפי זהות. אפשר גם לנעוץ ענף פתוח לבחירתך.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לסמל שכבה משלך.'}</p>
-          <div className="crest-progress-heading"><span>{crestEarned ? 'הסמל נחשף' : 'התקדמות לחשיפה'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לחשיפת הסמל האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
+          <div className="crest-progress-heading"><span>{crestEarned ? 'הסמל נחשף' : 'התקדמות לחשיפת הסמל האישי'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לחשיפת הסמל האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
         </div>
       </section>
