@@ -1557,8 +1557,8 @@ function App() {
       </div>
       <div className="home-lower-controls">
       <div className="home-stage-actions">
-        <button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button>
         <button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button>
+        <button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button>
       </div>
       <section className="home-quick-stats" aria-label="סיכום מהיר">
         <article><strong>{convos.length}</strong><span>תגובות ששמרתי</span></article>

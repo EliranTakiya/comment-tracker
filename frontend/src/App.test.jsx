@@ -90,6 +90,7 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
   expect(container.querySelector('.home-main-slide .crest-topic-signature').compareDocumentPosition(container.querySelector('.home-main-slide .home-stage-actions')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(container.querySelector('.home-main-slide .crest-topic-signature').compareDocumentPosition(container.querySelector('.home-main-slide .home-lower-controls')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(container.querySelector('.home-main-slide .home-stage-actions').parentElement).toBe(container.querySelector('.home-main-slide .home-lower-controls'));
+  expect([...container.querySelectorAll('.home-main-slide .home-stage-actions button')].map(button => button.textContent.trim())).toEqual(['צ׳אט המגיבים', 'אתגרים וקיר הבאדג׳ים']);
   expect(container.querySelectorAll('.home-main-slide .home-lower-controls .home-quick-stats article')).toHaveLength(3);
   expect(container.querySelectorAll('.home-screen > .app-footer')).toHaveLength(1);
   const panelsWithFooters = [...container.querySelectorAll('.dashboard-panel > .app-footer')].map(footer => footer.parentElement.id || footer.parentElement.querySelector('[id]')?.id || 'unnamed');
@@ -113,7 +114,7 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
   fireEvent.touchStart(homeCarousel, { changedTouches: [{ clientX: 150, clientY: 120 }] });
   fireEvent.touchEnd(homeCarousel, { changedTouches: [{ clientX: 250, clientY: 120 }] });
   await waitFor(() => expect(container.querySelector('.home-main-slide')).toHaveClass('is-current'));
-  fireEvent.click(container.querySelector('.home-main-slide .home-stage-actions button'));
+  fireEvent.click([...container.querySelectorAll('.home-main-slide .home-stage-actions button')].find(button => button.textContent.includes('אתגרים')));
   await waitFor(() => expect(container.querySelector('.home-challenges-slide')).toHaveClass('is-current'));
   expect(container.querySelector('.achievement-wall')).not.toHaveTextContent('החותם');
   expect(container.querySelector('.achievement-wall-heading')).toHaveTextContent('2 / 10 נפתחו');

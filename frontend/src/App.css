@@ -2192,7 +2192,7 @@ body:has(.app) { overflow: hidden; }
   .home-quick-stats { flex: 0 0 clamp(68px, 9dvh, 78px); width: min(100%, 480px); align-self: center; min-height: 68px; gap: 5px; padding: 3px 7px 5px; }
   .home-quick-stats article { gap: 2px; padding: 3px 2px; border-width: 1px; border-radius: 6px; }
   .home-quick-stats strong { font-size: clamp(18px, 5.5vw, 24px); }
-  .home-quick-stats span { font-size: 8px; line-height: 1.15; }
+  .home-quick-stats span { font-size: 13px; line-height: 1.15; }
 }
 @media (max-width: 480px) {
   .home-challenges-slide .achievement-wall { width: calc(100% + 28px); margin-inline: -14px; padding-inline: 10px; }
