@@ -1552,14 +1552,14 @@ function App() {
         <div className="crest-evolution-copy"><span className="section-kicker">{crestEarned ? 'הסמל הבסיסי שלך נפתח · הזהות ממשיכה להתפתח' : 'פרס מוחבא · זהות בהתהוות'}</span><h2 id="identity-title">{crestEarned ? visibleIdentityDirection.name : 'The Crest'}</h2><p>{crestEarned ? currentUser?.identityMode === 'custom' ? 'הסמל נעוץ על הענף שבחרת. בכל עת אפשר לחזור להתפתחות אוטומטית.' : 'הסמל משתנה אוטומטית כשהפעילות שלך פותחת ענפי זהות. אפשר גם לנעוץ ענף פתוח לבחירתך.' : 'כל תגובה, רעיון, פוסט ואתגר מוסיפים לסמל שכבה משלך.'}</p>
           <div className="crest-progress-heading"><span>{crestEarned ? 'הסמל נחשף' : 'התקדמות לחשיפת הסמל האישי'}</span><strong>{identityProgress}%</strong></div><div className="progress-track crest-progress-track" role="progressbar" aria-label="התקדמות לחשיפת הסמל האישי" aria-valuenow={identityProgress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${identityProgress}%` }} /></div>
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
+          <div className="home-stage-actions">
+            <button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button>
+            <button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button>
+          </div>
         </div>
       </section>
       </div>
       <div className="home-lower-controls">
-      <div className="home-stage-actions">
-        <button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button>
-        <button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button>
-      </div>
       <section className="home-quick-stats" aria-label="סיכום מהיר">
         <article><strong>{convos.length}</strong><span>תגובות ששמרתי</span></article>
         <article><strong>{totalCommentLikes}</strong><span>לייקים שקיבלתי</span></article>
