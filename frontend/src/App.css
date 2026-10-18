@@ -2171,7 +2171,7 @@ body:has(.app) { overflow: hidden; }
   .home-stage-actions button { min-width: 0; flex: 1 1 0; padding-inline: 9px; font-size: 11px; }
   .home-challenges-slide .achievement-wall { width: calc(100% + 28px); margin-inline: -14px; padding: 12px 14px; }
   .home-challenges-slide .achievement-badge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
-  .app.is-home-active .home-first-screen { flex: 1 1 auto; height: auto; min-height: 0; padding-bottom: 128px; }
+  .app.is-home-active .home-first-screen { flex: auto; height: auto; min-height: 0; padding-bottom: 110px; }
   .app.is-home-active .home-first-screen .home-cosmic-stage { flex: 1 1 0; }
   .home-lower-controls { position: absolute; z-index: 4; right: 0; bottom: 23px; left: 0; display: flex; flex: 0 0 auto; gap: 3px; margin: 0; padding: 0 7px; }
   .app.is-home-active .home-cosmic-stage .crest-evolution,
