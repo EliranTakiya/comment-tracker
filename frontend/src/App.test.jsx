@@ -84,6 +84,10 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
 
   const { container } = render(<App />);
   await screen.findByRole('heading', { name: 'התגובות שלך, במקום אחד' });
+  expect(container.querySelector('.home-main-slide')).toHaveClass('is-current');
+  expect(container.querySelector('.home-main-slide .home-cosmic-stage #identity')).toBeInTheDocument();
+  expect(container.querySelectorAll('.home-main-slide .home-stage-actions button')).toHaveLength(2);
+  expect(container.querySelectorAll('.home-main-slide .home-quick-stats article')).toHaveLength(3);
   expect(container.querySelectorAll('.home-screen > .app-footer')).toHaveLength(1);
   const panelsWithFooters = [...container.querySelectorAll('.dashboard-panel > .app-footer')].map(footer => footer.parentElement.id || footer.parentElement.querySelector('[id]')?.id || 'unnamed');
   expect(panelsWithFooters).toEqual(['statistics', 'tasks', 'ideas', 'recommendations', 'progress', 'blog', 'community-blog', 'leaderboard', 'settings', 'comments']);
