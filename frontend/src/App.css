@@ -2183,7 +2183,7 @@ body:has(.app) { overflow: hidden; }
   .app.is-home-active .home-cosmic-stage .crest-core { width: min(40vw, 158px); height: min(52vw, 202px); font-size: 44px; }
   .app.is-home-active .home-cosmic-stage .crest-orbit { width: min(78vw, 306px); height: min(78vw, 306px); }
   .app.is-home-active .home-cosmic-stage .crest-orbit-two { width: min(68vw, 266px); height: min(68vw, 266px); }
-  .app.is-home-active .home-cosmic-stage .crest-evolution-copy { flex: 0 0 auto; width: 100%; min-height: 0; align-content: start; }
+  .app.is-home-active .home-cosmic-stage .crest-evolution-copy { flex: 0 0 auto; width: 100%; min-height: 0; align-content: start; margin-block-start: auto; }
   .app.is-home-active .home-cosmic-stage .crest-evolution-copy > p { margin-bottom: 4px; font-size: 10px; line-height: 1.3; }
   .app.is-home-active .home-cosmic-stage .crest-topic-signature { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: center; gap: 4px; width: 100%; min-height: 48px; margin: 6px 0 0; padding: 0; overflow: visible; }
   .app.is-home-active .home-cosmic-stage .crest-topic-signature > span { flex: 0 0 auto; min-height: 20px; padding: 2px 5px; font-size: 9px; }
