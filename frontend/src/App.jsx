@@ -263,8 +263,8 @@ function App() {
     const deltaY = touch.clientY - start.y;
     if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
     setHomePanel(previous => {
-      if (deltaX > 0) return previous === 'challenges' ? 'home' : previous === 'home' ? 'chat' : previous;
-      return previous === 'chat' ? 'home' : previous === 'home' ? 'challenges' : previous;
+      if (deltaX > 0) return previous === 'chat' ? 'home' : previous === 'home' ? 'challenges' : previous;
+      return previous === 'challenges' ? 'home' : previous === 'home' ? 'chat' : previous;
     });
   };
 
@@ -1476,8 +1476,8 @@ function App() {
       <main className="app-screens">
       <section className={`dashboard-screen home-screen ${activeSection === 'home' ? 'is-active' : ''}`} aria-label="ראשי">
       <div className="home-carousel" onTouchStart={handleHomeTouchStart} onTouchEnd={handleHomeTouchEnd}>
-      <div className="home-carousel-track" style={{ '--home-panel-offset': homePanel === 'challenges' ? '0%' : homePanel === 'home' ? '-33.333333%' : '-66.666667%' }}>
-      <section className={`home-slide home-challenges-slide ${homePanel === 'challenges' ? 'is-current' : ''}`} aria-label="אתגרי נושאים וקיר הבאדג׳ים" aria-hidden={homePanel !== 'challenges'} inert={homePanel !== 'challenges'}>
+      <div className="home-carousel-track">
+      <section className={`home-slide home-challenges-slide ${homePanel === 'challenges' ? 'is-current' : ''}`} style={{ '--home-slide-x': homePanel === 'challenges' ? '0%' : homePanel === 'home' ? '-100%' : '-200%' }} aria-label="אתגרי נושאים וקיר הבאדג׳ים" aria-hidden={homePanel !== 'challenges'} inert={homePanel !== 'challenges'}>
       <section className="topic-challenges topic-challenges-home" id="topic-challenges" aria-labelledby="topic-challenges-title">
         <div className="identity-branches-heading"><div><span className="section-kicker">CHALLENGES</span><h2 id="topic-challenges-title">אתגרי נושאים</h2></div><span>באדג׳ נפרד לכל נושא</span></div>
         <div className="topic-challenge-grid">{topicChallenges.map((challenge, index) => <article className={`topic-challenge topic-challenge-${index} ${challenge.earned ? 'is-earned' : ''}`} key={challenge.topic}>
@@ -1497,7 +1497,7 @@ function App() {
       </section>
       <div className="home-slide-actions"><button type="button" onClick={() => setHomePanel('home')}>ראשי</button><button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button></div>
       </section>
-      <section className={`home-slide home-main-slide ${homePanel === 'home' ? 'is-current' : ''}`} aria-label="מסך ראשי" aria-hidden={homePanel !== 'home'} inert={homePanel !== 'home'}>
+      <section className={`home-slide home-main-slide ${homePanel === 'home' ? 'is-current' : ''}`} style={{ '--home-slide-x': homePanel === 'home' ? '0%' : homePanel === 'challenges' ? '100%' : '-100%' }} aria-label="מסך ראשי" aria-hidden={homePanel !== 'home'} inert={homePanel !== 'home'}>
       <div className="home-first-screen">
       <div className={`home-cosmic-stage ${crestEarned ? 'is-earned' : 'is-locked'}`}>
       <header className="hero" id="home">
@@ -1566,7 +1566,7 @@ function App() {
       </section>
       </div>
       </section>
-      <section className={`home-slide home-chat-slide ${homePanel === 'chat' ? 'is-current' : ''}`} aria-label="צ׳אט המגיבים" aria-hidden={homePanel !== 'chat'} inert={homePanel !== 'chat'}>
+      <section className={`home-slide home-chat-slide ${homePanel === 'chat' ? 'is-current' : ''}`} style={{ '--home-slide-x': homePanel === 'chat' ? '0%' : homePanel === 'home' ? '100%' : '200%' }} aria-label="צ׳אט המגיבים" aria-hidden={homePanel !== 'chat'} inert={homePanel !== 'chat'}>
         <header className="home-slide-heading"><div><span className="section-kicker">קהילת המגיבים</span><h2>צ׳אט המגיבים</h2></div><span className="chat-local-note">טיוטה מקומית בלבד · ללא שרת</span></header>
         <div className="local-chat-messages" aria-live="polite">
           {localChatMessages.length ? localChatMessages.map(message => <article className="local-chat-message" key={message.id}><strong>{message.author}</strong><p>{message.text}</p></article>) : <p className="local-chat-empty">עדיין אין הודעות. אפשר לכתוב כאן הודעה זמנית.</p>}
