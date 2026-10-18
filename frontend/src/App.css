@@ -2128,7 +2128,7 @@ body:has(.app) { overflow: hidden; }
 .app.is-home-active .home-cosmic-stage.is-earned { background: transparent; }
 .app.is-home-active .home-first-screen { display: flex; flex: 1 1 auto; height: auto; min-height: 0; flex-direction: column; }
 .app.is-home-active .home-first-screen .home-cosmic-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.home-lower-controls { display: flex; flex: 0 0 auto; flex-direction: column; align-items: center; gap: 8px; width: 100%; margin-top: auto; padding: 0 8px 36px; }
+.home-lower-controls { display: flex; flex: 0 0 auto; flex-direction: column; align-items: center; gap: 4px; width: 100%; margin-top: auto; padding: 0 8px 36px; }
 .home-quick-stats { flex: 0 0 auto; min-height: 126px; }
 .home-stage-actions { width: min(100%, 500px); gap: 8px; margin-top: 3px; padding: 3px 8px; }
 .home-stage-actions button { min-width: 140px; min-height: 36px; }
@@ -2171,9 +2171,9 @@ body:has(.app) { overflow: hidden; }
   .home-stage-actions button { min-width: 0; flex: 1 1 0; padding-inline: 9px; font-size: 11px; }
   .home-challenges-slide .achievement-wall { width: calc(100% + 28px); margin-inline: -14px; padding: 12px 14px; }
   .home-challenges-slide .achievement-badge-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
-  .app.is-home-active .home-first-screen { flex: 1 1 auto; height: auto; min-height: 0; padding-bottom: 112px; }
+  .app.is-home-active .home-first-screen { flex: 1 1 auto; height: auto; min-height: 0; padding-bottom: 128px; }
   .app.is-home-active .home-first-screen .home-cosmic-stage { flex: 1 1 0; }
-  .home-lower-controls { position: absolute; z-index: 4; right: 0; bottom: 17px; left: 0; display: flex; flex: 0 0 auto; gap: 7px; margin: 0; padding: 0 7px; }
+  .home-lower-controls { position: absolute; z-index: 4; right: 0; bottom: 17px; left: 0; display: flex; flex: 0 0 auto; gap: 3px; margin: 0; padding: 0 7px; }
   .app.is-home-active .home-cosmic-stage .crest-evolution,
   .app.is-home-active .home-cosmic-stage .crest-evolution.is-earned { flex: 1 1 0; min-height: 0; }
   .app.is-home-active .home-cosmic-stage .crest-evolution,
@@ -2187,7 +2187,6 @@ body:has(.app) { overflow: hidden; }
   .app.is-home-active .home-cosmic-stage .crest-evolution-copy > p { margin-bottom: 4px; font-size: 10px; line-height: 1.3; }
   .app.is-home-active .home-cosmic-stage .crest-topic-signature { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: center; gap: 4px; width: 100%; min-height: 48px; margin: 6px 0 0; padding: 0; overflow: visible; }
   .app.is-home-active .home-cosmic-stage .crest-topic-signature > span { flex: 0 0 auto; min-height: 20px; padding: 2px 5px; font-size: 9px; }
-  .app.is-home-active .home-cosmic-stage > .home-stage-actions { position: relative; z-index: 2; flex: 0 0 auto; justify-content: center; gap: 5px; margin-top: 3px; padding: 0 6px; }
   .home-stage-actions { flex: 0 0 auto; gap: 5px; padding: 2px 6px; }
   .home-stage-actions button { min-width: 0; min-height: 28px; flex: 1 1 0; padding: 3px 5px; border-width: 1px; border-radius: 7px; font-size: 9px; }
   .home-quick-stats { flex: 0 0 clamp(68px, 9dvh, 78px); width: min(100%, 480px); align-self: center; min-height: 68px; gap: 5px; padding: 3px 7px 5px; }
