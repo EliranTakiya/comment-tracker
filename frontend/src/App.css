@@ -2127,8 +2127,9 @@ body:has(.app) { overflow: hidden; }
 .app.is-home-active .home-cosmic-stage.is-earned { background: transparent; }
 .app.is-home-active .home-first-screen { display: flex; flex: 1 1 auto; height: auto; min-height: 0; flex-direction: column; }
 .app.is-home-active .home-first-screen .home-cosmic-stage { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.home-lower-controls { display: flex; flex: 0 0 auto; flex-direction: column; align-items: center; gap: 2px; width: 100%; padding: 0 8px 28px; }
 .home-quick-stats { flex: 0 0 auto; min-height: 126px; }
-.home-stage-actions { gap: 8px; padding: 10px 16px 16px; }
+.home-stage-actions { width: min(100%, 500px); gap: 8px; padding: 3px 8px; }
 .home-stage-actions button { min-width: 140px; min-height: 36px; }
 .home-carousel-indicator { position: absolute; z-index: 3; right: 50%; bottom: 11px; display: flex; align-items: center; gap: 6px; direction: ltr; transform: translateX(50%); pointer-events: none; }
 .home-carousel-indicator span { width: 6px; height: 6px; border-radius: 50%; background: rgba(57,70,91,.3); transition: width .2s, background .2s; }
@@ -2169,6 +2170,7 @@ body:has(.app) { overflow: hidden; }
   .home-stage-actions button { min-width: 0; flex: 1 1 0; padding-inline: 9px; font-size: 11px; }
   .app.is-home-active .home-first-screen { flex: 1 1 auto; height: auto; min-height: 0; }
   .app.is-home-active .home-first-screen .home-cosmic-stage { flex: 1 1 0; }
+  .home-lower-controls { gap: 2px; padding: 0 7px 27px; }
   .app.is-home-active .home-cosmic-stage .crest-evolution,
   .app.is-home-active .home-cosmic-stage .crest-evolution.is-earned { flex: 1 1 0; min-height: 0; }
   .app.is-home-active .home-cosmic-stage .crest-evolution,
@@ -2181,7 +2183,7 @@ body:has(.app) { overflow: hidden; }
   .app.is-home-active .home-cosmic-stage .crest-evolution-copy > p { margin-bottom: 5px; font-size: 10px; line-height: 1.35; }
   .app.is-home-active .home-cosmic-stage .crest-topic-signature { gap: 4px; margin-top: 6px; }
   .app.is-home-active .home-cosmic-stage .crest-topic-signature > span { min-height: 20px; padding: 2px 5px; font-size: 9px; }
-  .home-stage-actions { flex: 0 0 auto; gap: 5px; padding: 3px 7px 4px; }
+  .home-stage-actions { flex: 0 0 auto; gap: 5px; padding: 2px 6px; }
   .home-stage-actions button { min-width: 0; min-height: 28px; flex: 1 1 0; padding: 3px 5px; border-width: 1px; border-radius: 7px; font-size: 9px; }
   .home-quick-stats { flex: 0 0 clamp(68px, 9dvh, 78px); width: min(100%, 480px); align-self: center; min-height: 68px; gap: 5px; padding: 3px 7px 5px; }
   .home-quick-stats article { gap: 2px; padding: 3px 2px; border-width: 1px; border-radius: 6px; }

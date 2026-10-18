@@ -1554,16 +1554,18 @@ function App() {
           <div className="crest-topic-signature">{TOPICS.map((topic, index) => <span key={topic} className={topicMix.some(item => item.topic === topic) ? 'is-active' : ''} title={`${topic}: ${topicIdeaCounts[topic] || 0} פריטים מקושרים`}><i className={`topic-sigil topic-sigil-${index}`} aria-hidden="true">{['◉', '⬟', '⌁', '✥', '❖', '◌'][index]}</i>{topic}</span>)}</div>
         </div>
       </section>
+      </div>
+      <div className="home-lower-controls">
       <div className="home-stage-actions">
         <button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button>
         <button type="button" onClick={() => setHomePanel('chat')}>צ׳אט המגיבים</button>
-      </div>
       </div>
       <section className="home-quick-stats" aria-label="סיכום מהיר">
         <article><strong>{convos.length}</strong><span>תגובות ששמרתי</span></article>
         <article><strong>{totalCommentLikes}</strong><span>לייקים שקיבלתי</span></article>
         <article><strong>{savedSites.length}</strong><span>אתרים שהגבתי בהם</span></article>
       </section>
+      </div>
       </div>
       </section>
       <section className={`home-slide home-chat-slide ${homePanel === 'chat' ? 'is-current' : ''}`} style={{ '--home-slide-x': homePanel === 'chat' ? '0%' : homePanel === 'home' ? '100%' : '200%' }} aria-label="צ׳אט המגיבים" aria-hidden={homePanel !== 'chat'} inert={homePanel !== 'chat'}>
