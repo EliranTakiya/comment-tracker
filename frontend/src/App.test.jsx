@@ -87,6 +87,8 @@ test('retains badge, ideas, and cross-screen blog workflows', async () => {
   expect(container.querySelector('.home-main-slide')).toHaveClass('is-current');
   expect(container.querySelector('.home-main-slide .home-cosmic-stage #identity')).toBeInTheDocument();
   expect(container.querySelectorAll('.home-main-slide .home-stage-actions button')).toHaveLength(2);
+  expect(container.querySelector('.home-main-slide .crest-topic-signature').compareDocumentPosition(container.querySelector('.home-main-slide .home-stage-actions')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(container.querySelector('.home-main-slide .home-stage-actions').parentElement).toBe(container.querySelector('.home-main-slide .home-cosmic-stage'));
   expect(container.querySelectorAll('.home-main-slide .home-quick-stats article')).toHaveLength(3);
   expect(container.querySelectorAll('.home-screen > .app-footer')).toHaveLength(1);
   const panelsWithFooters = [...container.querySelectorAll('.dashboard-panel > .app-footer')].map(footer => footer.parentElement.id || footer.parentElement.querySelector('[id]')?.id || 'unnamed');
