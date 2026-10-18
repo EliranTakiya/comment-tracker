@@ -1579,7 +1579,7 @@ function App() {
         <div className="home-slide-actions"><button type="button" onClick={() => setHomePanel('home')}>ראשי</button><button type="button" onClick={() => setHomePanel('challenges')}>אתגרים וקיר הבאדג׳ים</button></div>
       </section>
       </div>
-      <div className="home-carousel-indicator" aria-hidden="true"><span className={homePanel === 'challenges' ? 'is-current' : ''} /><span className={homePanel === 'home' ? 'is-current' : ''} /><span className={homePanel === 'chat' ? 'is-current' : ''} /></div>
+      <div className="home-carousel-indicator" dir="ltr" aria-hidden="true"><span className={homePanel === 'challenges' ? 'is-current' : ''} /><span className={homePanel === 'home' ? 'is-current' : ''} /><span className={homePanel === 'chat' ? 'is-current' : ''} /></div>
       </div>
       {dashboardFooter}
       </section>
